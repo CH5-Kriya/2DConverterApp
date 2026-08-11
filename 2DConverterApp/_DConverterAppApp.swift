@@ -1,17 +1,15 @@
-//
-//  _DConverterAppApp.swift
-//  2DConverterApp
-//
-//  Created by Yohanes Vito Rizki D on 10/08/26.
-//
-
 import SwiftUI
 
 @main
 struct _DConverterAppApp: App {
+    @State private var appState = AppState()
+    @State private var dependencies = AppDependencies()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
+                .environment(appState)
+                .environment(dependencies)
         }
     }
 }
