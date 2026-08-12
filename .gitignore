@@ -1,0 +1,21 @@
+## macOS
+.DS_Store
+
+## Xcode — state per-user, jangan pernah di-commit
+xcuserdata/
+*.xcuserstate
+
+## Build output
+build/
+DerivedData/
+
+## Swift Package Manager
+## Package.resolved sengaja TIDAK diabaikan — dia yang mengunci versi dependensi
+.build/
+.swiftpm/configuration/registries.json
+
+## Misc
+*.hmap
+*.ipa
+*.dSYM
+*.dSYM.zip
