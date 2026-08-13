@@ -37,9 +37,9 @@ DerivedData/
 ReliefKit/.build/
 .swiftpm/
 
-# OpenCV, built from source (~93 MB of binaries across three slices).
+# opencv2.xcframework IS committed (~93 MB, largest single file 44.7 MB).
 #
-# Not committed: it is a build artifact with an exact, documented recipe in
-# ReliefKit/Frameworks/BUILD_OPENCV.md. Committing it would put ~93 MB of
-# binaries into every clone forever.
-ReliefKit/Frameworks/opencv2.xcframework/
+# Without it the package cannot even resolve -- "local binary target 'opencv2'
+# does not contain a binary artifact" -- so a clone would not build at all.
+# Every file is under GitHub's 100 MB limit, and it is rebuilt rarely enough
+# that the history will not grow. Recipe: ReliefKit/Frameworks/BUILD_OPENCV.md
