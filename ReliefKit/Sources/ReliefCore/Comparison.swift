@@ -16,6 +16,17 @@ import Foundation
 /// loosening the number only hides it until stage 7.
 
 public struct Divergence: Sendable {
+    /// Mean gradient magnitude of each side.
+    ///
+    /// Max-error and correlation are both blind to high-frequency noise: a
+    /// plane can sit within 1e-3 of the reference everywhere, correlate at
+    /// 0.99999, and still be visibly rougher -- which is exactly what reaches a
+    /// fingertip, and exactly what a relief is for. This is the measurement
+    /// that catches it.
+    public var gradientGot: Double = 0
+    public var gradientExpected: Double = 0
+    public var roughnessRatio: Double { gradientExpected > 0 ? gradientGot / gradientExpected : 0 }
+
     public let maxAbsErr: Double
     public let meanAbsErr: Double
     public let correlation: Double
@@ -118,14 +129,50 @@ public enum Compare {
         let denom = (varA * varB).squareRoot()
         let corr = denom > 1e-30 ? cov / denom : (varA == varB ? 1.0 : 0.0)
 
-        return Divergence(maxAbsErr: maxAbs,
+        func meanGradient(_ p: Plane) -> Double {
+            guard p.rows > 2, p.cols > 2, p.channels == 1 else { return 0 }
+            var acc = 0.0
+            for y in 1..<(p.rows-1) {
+                for x in 1..<(p.cols-1) {
+                    let i = y * p.cols + x
+                    let gx = Double(p.values[i+1] - p.values[i-1]) / 2
+                    let gy = Double(p.values[i+p.cols] - p.values[i-p.cols]) / 2
+                    acc += (gx*gx + gy*gy).squareRoot()
+                }
+            }
+            return acc / Double((p.rows-2) * (p.cols-2))
+        }
+
+        var d = Divergence(maxAbsErr: maxAbs,
                           meanAbsErr: sumAbs / Double(n),
                           correlation: corr,
                           disagreementFraction: Double(differing) / Double(n),
                           count: n)
+        d.gradientGot = meanGradient(got)
+        d.gradientExpected = meanGradient(expected)
+        return d
     }
 
+    /// Roughness bound applied to every stage on top of its own tolerance.
+    ///
+    /// Added after a Core ML stride bug shipped: the depth map was sheared into
+    /// noise, yet it had the right element count, the right range, and passed
+    /// every check that looked at magnitude. It was 9x rougher than the
+    /// reference, and roughness is precisely what a fingertip reads. Max-error
+    /// and correlation are both blind to that; this is not.
+    public static let roughnessTolerance = 0.05
+
     public static func passes(_ d: Divergence, _ tolerance: Tolerance) -> Bool {
+        guard roughnessOK(d) else { return false }
+        return passesMagnitude(d, tolerance)
+    }
+
+    public static func roughnessOK(_ d: Divergence) -> Bool {
+        guard d.gradientExpected > 0 else { return true }
+        return abs(d.roughnessRatio - 1.0) <= roughnessTolerance
+    }
+
+    private static func passesMagnitude(_ d: Divergence, _ tolerance: Tolerance) -> Bool {
         switch tolerance {
         case .exact(let maxErr):
             return d.maxAbsErr <= maxErr

@@ -210,6 +210,10 @@ void relief_resize_bicubic_channels(const float *src, float *dst, int src_h,
 void relief_dpt_preprocess(const float *rgb, size_t rows, size_t cols,
                            int out_h, int out_w, float *out);
 
+/// `io_utils.load_image` -- PIL LANCZOS resize of 8-bit RGB into float32 [0,1].
+void relief_pil_lanczos_rgb(const uint8_t *rgb, size_t rows, size_t cols,
+                            int out_h, int out_w, float *out);
+
 /// Link-and-run check for the vendored OpenCV: exercises `cv::CLAHE` on 16-bit,
 /// `cv::ximgproc::guidedFilter` and `cv::distanceTransform(DIST_L2, 5)`.
 /// Returns 0 on success, or the index of the first check that failed.

@@ -78,8 +78,5 @@ for fixture in try GoldenFixture.discover(in: root) {
     }
 }
 
-checkMeshes(root: root)
-runEndToEnd(root: root)
-checkPositionEmbedding(fixtures: URL(fileURLWithPath: "/Users/elliezer/Documents/Projects/Challenge 5/test_python/out/coreml/pos_embed"))
-checkDPTPreprocess(root: root)
-checkResizeAgainstPIL()
+meshFromFixtureInput()
+runFullOnJPEG()

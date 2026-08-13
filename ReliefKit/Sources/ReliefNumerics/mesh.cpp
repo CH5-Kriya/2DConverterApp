@@ -8,6 +8,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
+#include <cstdlib>
 #include <vector>
 
 #include <opencv2/core.hpp>
@@ -29,6 +31,14 @@ int relief_resample_height(const float *height, size_t rows, size_t cols,
     cv::Mat dst;
     cv::resize(src, dst, cv::Size(nw, nh), 0, 0, cv::INTER_AREA);
     std::copy(dst.ptr<float>(), dst.ptr<float>() + static_cast<size_t>(nh) * nw, out);
+    if (const char *d = getenv("RELIEF_DUMP_RESAMPLE_IN")) {
+        FILE *f = fopen(d, "wb");
+        if (f) { fwrite(height, sizeof(float), rows * cols, f); fclose(f); }
+    }
+    if (const char *d = getenv("RELIEF_DUMP_RESAMPLE")) {
+        FILE *f = fopen(d, "wb");
+        if (f) { fwrite(out, sizeof(float), static_cast<size_t>(nh) * nw, f); fclose(f); }
+    }
     *out_rows = static_cast<size_t>(nh);
     *out_cols = static_cast<size_t>(nw);
     return 0;

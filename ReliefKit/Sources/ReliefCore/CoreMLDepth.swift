@@ -22,6 +22,7 @@ public final class CoreMLDepthBackend: DepthBackend {
     private let modelURL: URL
     private let positionEmbedding: PositionEmbedding
     private var cache: [String: MLModel] = [:]
+    private var compiled: URL?
 
     /// Aspect buckets the package was built with. An image whose short side
     /// scales to a long side outside this list has no matching function and is
@@ -64,12 +65,23 @@ public final class CoreMLDepthBackend: DepthBackend {
 
     static func functionName(height: Int, width: Int) -> String { "s\(height)x\(width)" }
 
+    /// Xcode compiles a bundled `.mlpackage` into `.mlmodelc` at build time.
+    /// A model dropped in by hand is not compiled, so do it once here and cache
+    /// the result — otherwise Core ML just reports "not a valid .mlmodelc file".
+    private func compiledURL() throws -> URL {
+        if modelURL.pathExtension == "mlmodelc" { return modelURL }
+        if let done = compiled { return done }
+        let url = try MLModel.compileModel(at: modelURL)
+        compiled = url
+        return url
+    }
+
     private func model(for name: String) throws -> MLModel {
         if let cached = cache[name] { return cached }
         let config = MLModelConfiguration()
         config.computeUnits = .all          // let the runtime place it; static
         config.functionName = name          // shapes are what keep it on the ANE
-        let loaded = try MLModel(contentsOf: modelURL, configuration: config)
+        let loaded = try MLModel(contentsOf: try compiledURL(), configuration: config)
         cache[name] = loaded
         return loaded
     }
@@ -125,15 +137,37 @@ public final class CoreMLDepthBackend: DepthBackend {
         let result = try ml.prediction(from: input)
         guard let raw = result.featureValue(for: "predicted_depth")?.multiArrayValue
         else { throw Failure.badOutput }
+        if getenv("RELIEF_DEBUG_DEPTH") != nil {
+            print("    model input  \(size.height)x\(size.width)"
+                  + "  function \(Self.functionName(height: size.height, width: size.width))")
+            print("    output shape \(raw.shape.map(\.intValue))  strides \(raw.strides.map(\.intValue))"
+                  + "  dataType \(raw.dataType.rawValue) count \(raw.count)")
+            print("    output names: \(result.featureNames.sorted())")
+        }
 
         // 4. Back to working resolution **in float, before any quantization**.
         // The reference avoids the transformers pipeline helper for exactly this
         // reason: it returns 8-bit, and 256 levels over an 8 mm relief is a
         // 31 micron step — coarse enough to feel as banding.
-        let count = raw.count
-        var predicted = [Float](repeating: 0, count: count)
+        // **Respect the strides.** Core ML pads rows for alignment: a
+        // 742x518 output reports strides [391776, 528, 1], so each row is 528
+        // floats with only the first 518 valid. Reading the buffer as flat
+        // contiguous shifts every row progressively and shears the depth map
+        // into noise -- it still has the right element count and the right
+        // range, so nothing downstream complains; it is simply wrong.
+        let shape = raw.shape.map(\.intValue)
+        let strides = raw.strides.map(\.intValue)
+        let h = shape[shape.count - 2], w = shape[shape.count - 1]
+        let rowStride = strides[strides.count - 2]
+        let colStride = strides[strides.count - 1]
+
+        var predicted = [Float](repeating: 0, count: h * w)
         let ptr = raw.dataPointer.assumingMemoryBound(to: Float.self)
-        for i in 0..<count { predicted[i] = ptr[i] }
+        for y in 0..<h {
+            let row = y * rowStride
+            for x in 0..<w { predicted[y * w + x] = ptr[row + x * colStride] }
+        }
+        guard h == size.height, w == size.width else { throw Failure.badOutput }
 
         var upscaled = [Float](repeating: 0, count: rgb.rows * rgb.cols)
         predicted.withUnsafeBufferPointer { src in

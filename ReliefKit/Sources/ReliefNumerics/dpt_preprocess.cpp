@@ -12,6 +12,24 @@ namespace {
 // the image to `DPTImageProcessor`, which resizes a **PIL** image, so this is
 // the filter that has to be reproduced -- not the one used for the position
 // embeddings a few lines away in the same file.
+// PIL's LANCZOS: sinc(x) * sinc(x/3), support 3.0.
+//
+// This is the filter `io_utils.load_image` reaches through
+// `Image.resize(..., Image.LANCZOS)`. It is *not* what CGImageSource's
+// thumbnail path produces -- measured against PIL on a real painting, that
+// differs by 1.6% mean and 18% max, which is orders of magnitude past every
+// stage tolerance in this pipeline and shows up in the relief as spikes.
+inline double pil_sinc(double x) {
+    if (x == 0.0) return 1.0;
+    x *= M_PI;
+    return std::sin(x) / x;
+}
+
+inline double pil_lanczos(double x) {
+    if (-3.0 <= x && x < 3.0) return pil_sinc(x) * pil_sinc(x / 3.0);
+    return 0.0;
+}
+
 inline double pil_bicubic(double x) {
     const double a = -0.5;
     x = std::fabs(x);
@@ -40,10 +58,12 @@ inline uint8_t clip8(int32_t v) {
 }
 
 void resample_axis(const float *src, float *dst, int src_len, int dst_len,
-                   int other_len, int channels, bool horizontal) {
+                   int other_len, int channels, bool horizontal,
+                   bool lanczos = false) {
     const double scale = static_cast<double>(src_len) / dst_len;
     const double filterscale = std::max(1.0, scale);
-    const double support = 2.0 * filterscale;
+    const double base_support = lanczos ? 3.0 : 2.0;
+    const double support = base_support * filterscale;
     const double inv = 1.0 / filterscale;
 
     std::vector<double> w;
@@ -61,7 +81,8 @@ void resample_axis(const float *src, float *dst, int src_len, int dst_len,
         w.assign(n, 0.0);
         double total = 0.0;
         for (int j = 0; j < n; ++j) {
-            const double v = pil_bicubic((j + xmin - centre + 0.5) * inv);
+            const double t = (j + xmin - centre + 0.5) * inv;
+            const double v = lanczos ? pil_lanczos(t) : pil_bicubic(t);
             w[j] = v;
             total += v;
         }
@@ -135,4 +156,28 @@ void relief_dpt_preprocess(const float *rgb, size_t rows, size_t cols,
                 out[c * plane + static_cast<size_t>(y) * out_w + x] =
                     (v - mean[c]) / std_[c];
             }
+}
+
+
+void relief_pil_lanczos_rgb(const uint8_t *rgb, size_t rows, size_t cols,
+                            int out_h, int out_w, float *out) {
+    // `io_utils.load_image`: PIL LANCZOS downscale of the 8-bit image, then
+    // /255 into float32. Reproduced rather than delegated to CoreGraphics --
+    // see the note on `pil_lanczos` for what that costs.
+    const int H = static_cast<int>(rows), W = static_cast<int>(cols);
+    const size_t N = rows * cols;
+
+    std::vector<float> src(N * 3);
+    for (size_t i = 0; i < N * 3; ++i) src[i] = static_cast<float>(rgb[i]);
+
+    // PIL resizes horizontally first, then vertically, clamping to 8 bits in
+    // between; both passes have to happen in that order to match.
+    std::vector<float> tmp(static_cast<size_t>(H) * out_w * 3);
+    resample_axis(src.data(), tmp.data(), W, out_w, H, 3, true, /*lanczos=*/true);
+    std::vector<float> resized(static_cast<size_t>(out_h) * out_w * 3);
+    resample_axis(tmp.data(), resized.data(), H, out_h, out_w, 3, false,
+                  /*lanczos=*/true);
+
+    for (size_t i = 0; i < static_cast<size_t>(out_h) * out_w * 3; ++i)
+        out[i] = resized[i] / 255.0f;
 }

@@ -263,12 +263,31 @@ for fixture in fixtures {
                   + " maxErr \(String(format: "%.3e", d.maxAbsErr))"
                   + "  mean \(String(format: "%.3e", d.meanAbsErr))"
                   + "  corr \(String(format: "%.8f", d.correlation))"
+                  + (d.gradientExpected > 0
+                     ? "  rough \(String(format: "%.2fx", d.roughnessRatio))" : "")
                   + "   [\(tol.describe)]")
         } catch {
             print("    FAIL \(stage.name): \(error)")
             failures += 1
         }
     }
+    // The light vector is estimated, not recorded -- and every Z_main stage
+    // above is fed the *reference's* light so the solver is measured alone.
+    // If the estimate disagrees, the real pipeline diverges even though every
+    // stage passes.
+    do {
+        let depth = try fixture.plane("04_depth_corrected")
+        let mask = Volume.foreground(depth: depth)
+        let est = Volume.estimateLight(brightness: try fixture.plane("01_brightness_Y"),
+                                       mask: mask)
+        let ref = s.lightVector
+        let d = (0..<3).map { abs(Double(est.vector[$0]) - ref[$0]) }.max() ?? 0
+        print("    \(d < 1e-4 ? "ok  " : "FAIL") light                 "
+              + "mine [\(est.vector.map { String(format: "%.4f", $0) }.joined(separator: ", "))]  "
+              + "ref [\(ref.map { String(format: "%.4f", $0) }.joined(separator: ", "))]  "
+              + "maxErr \(String(format: "%.3e", d))  conf \(String(format: "%.3f", est.confidence))")
+    } catch { print("    light check failed: \(error)") }
+
     // Stage 2 produces scalars rather than an array, and the *decision* matters
     // more than the score: a route flip changes whether stage 4 quantizes depth
     // to flat layers, which is a visible change to the relief.
