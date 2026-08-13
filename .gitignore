@@ -19,3 +19,27 @@ DerivedData/
 *.ipa
 *.dSYM
 *.dSYM.zip
+
+# Depth Anything V2 Large, converted to Core ML (~640 MB).
+#
+# Not committed: it is a build artifact of scripts/convert_coreml.py in the
+# python repo, and it is CC-BY-NC-4.0 — fine for research and TestFlight, but
+# not something to redistribute through this repository.
+#
+# Regenerate with:
+#   conda run -n coreml python scripts/convert_coreml.py --shapes multifunction
+# then copy the .mlpackage and out/coreml/pos_embed/base_1x1370x1024.f32 into
+# 2DConverterApp/Resources/.
+2DConverterApp/Resources/*.mlpackage/
+2DConverterApp/Resources/*.f32
+
+# SwiftPM build products
+ReliefKit/.build/
+.swiftpm/
+
+# OpenCV, built from source (~93 MB of binaries across three slices).
+#
+# Not committed: it is a build artifact with an exact, documented recipe in
+# ReliefKit/Frameworks/BUILD_OPENCV.md. Committing it would put ~93 MB of
+# binaries into every clone forever.
+ReliefKit/Frameworks/opencv2.xcframework/
