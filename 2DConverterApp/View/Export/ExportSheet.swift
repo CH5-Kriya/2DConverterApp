@@ -144,26 +144,16 @@ struct ExportSheet: View {
             }
 
             field("File type") {
-                Menu {
-                    Picker("File type", selection: $model.format) {
-                        ForEach(ExportFormat.allCases) { format in
-                            Text("\(format.label) — \(format.detail)").tag(format)
+                // Buttons rather than a menu: with a handful of formats the
+                // whole choice is worth showing at once, and the selected one
+                // stays visible instead of hiding behind a tap.
+                HStack(spacing: 12) {
+                    ForEach(ExportFormat.allCases) { format in
+                        FormatButton(format: format,
+                                     isSelected: model.format == format) {
+                            model.format = format
                         }
                     }
-                    .pickerStyle(.inline)
-                } label: {
-                    HStack {
-                        Text(model.format.label)
-                            .font(Theme.Typography.caption)
-                            .foregroundStyle(Theme.Palette.textPrimary)
-                        Spacer()
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(Theme.Palette.textSecondary)
-                    }
-                    .padding(.horizontal, 16)
-                    .frame(height: 46)
-                    .background(inputBackground)
                 }
             }
 
@@ -213,5 +203,33 @@ struct ExportSheet: View {
                 .foregroundStyle(Theme.Palette.textSecondary)
             content()
         }
+    }
+}
+
+/// One file-type choice. The selected one carries the action colour, the same
+/// blue as the Export button below it — the format and the commitment are the
+/// same decision, a step apart.
+private struct FormatButton: View {
+    let format: ExportFormat
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(format.label)
+                .font(Theme.Typography.caption)
+                .foregroundStyle(isSelected ? .white : Theme.Palette.textPrimary)
+                .frame(maxWidth: .infinity)
+                .frame(height: 46)
+                .background(isSelected
+                            ? Theme.Palette.action
+                            : Theme.Palette.surfaceSelected,
+                            in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(format.label), \(format.detail)")
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+        .animation(.easeOut(duration: 0.15), value: isSelected)
     }
 }
