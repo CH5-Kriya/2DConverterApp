@@ -16,6 +16,16 @@ enum Theme {
 
         static let accentFill = Color(hex: 0xF5F5F5)
         static let onAccent = Color(hex: 0x0A0A0A)
+
+        // The editing workspace runs a shade lighter than the rest of the app:
+        // a relief read against pure black loses its own shadows, which are the
+        // whole point of the preview.
+        static let workspaceCanvas = Color(hex: 0x2A2A2A)
+        static let workspacePanel = Color(hex: 0x0D0D0D)
+        static let workspaceControl = Color(hex: 0x0B0B0B)
+        static let workspaceStroke = Color.white.opacity(0.5)
+        static let workspaceLabel = Color(hex: 0xF8F8F8)
+        static let mainBlue = Color(hex: 0x0078FD)
     }
 
     enum Metrics {
@@ -32,6 +42,12 @@ enum Theme {
         static let buttonWidth: CGFloat = 320
 
         static let sidebarAnimation: Animation = .snappy(duration: 0.28)
+
+        static let workspacePanelWidth: CGFloat = 286
+        static let workspacePanelRadius: CGFloat = 16
+        static let workspaceControlRadius: CGFloat = 12
+        static let workspaceChipRadius: CGFloat = 8
+        static let workspaceControlHeight: CGFloat = 42
     }
 
     enum Typography {
