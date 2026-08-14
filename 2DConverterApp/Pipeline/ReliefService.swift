@@ -101,4 +101,25 @@ actor ReliefService {
         let mesh = Mesh.build(height: height, config: config.mesh)
         return (Export.binarySTL(mesh), mesh)
     }
+
+    /// Stages 6–7 for whichever deliverable was asked for.
+    ///
+    /// The mesh is built either way: even the height map reports its printed
+    /// dimensions and watertightness, and those come from the solid rather than
+    /// from the field it was raised out of.
+    func exportPayload(height: Plane,
+                       config: ReliefConfig,
+                       format: ExportFormat) -> (Data, SolidMesh) {
+        let mesh = Mesh.build(height: height, config: config.mesh)
+        switch format {
+        case .stl:
+            return (Export.binarySTL(mesh), mesh)
+        case .heightMap:
+            let samples = Export.heightMap16(height)
+            let data = ReliefImage.gray16PNG(samples,
+                                             rows: height.rows,
+                                             cols: height.cols) ?? Data()
+            return (data, mesh)
+        }
+    }
 }

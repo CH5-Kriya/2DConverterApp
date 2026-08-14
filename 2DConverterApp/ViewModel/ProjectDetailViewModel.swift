@@ -7,7 +7,7 @@ final class ProjectDetailViewModel {
 
     private let projects: ProjectRepository
     private let projectID: UUID
-    private let relief: ReliefService
+    let relief: ReliefService
 
     private(set) var project: Project?
     private(set) var isLoading = true
@@ -30,7 +30,9 @@ final class ProjectDetailViewModel {
     private(set) var summary: String?
 
     private var output: ReliefService.Output?
-    private var height: Plane?
+    /// Exposed so the export sheet can build the solid from the exact
+    /// field on screen rather than re-deriving one.
+    private(set) var height: Plane?
     private var task: Task<Void, Never>?
 
     // MARK: Parameters
@@ -249,24 +251,8 @@ final class ProjectDetailViewModel {
         commit()
     }
 
-    func exportSTL() async -> URL? {
-        guard let height else { return nil }
-        let (data, mesh) = await relief.exportSTL(height: height, config: currentConfig())
-        let name = (project?.name ?? "relief").replacingOccurrences(of: "/", with: "-")
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("\(name).stl")
-        do {
-            try data.write(to: url)
-            summary = String(format: "%.0f x %.0f mm · %d faces · %@",
-                             mesh.widthMm, mesh.heightMm, mesh.faceCount,
-                             mesh.isWatertight ? "watertight" : "NOT watertight")
-            await setStatus(.exported)
-            return url
-        } catch {
-            stage = .failed(error.localizedDescription)
-            return nil
-        }
-    }
+    // Writing the file used to live here. It now belongs to `ExportViewModel`,
+    // behind the export sheet, which picks the format and the destination.
 
     // MARK: - Config
 
@@ -283,7 +269,7 @@ final class ProjectDetailViewModel {
         static func lambdaDetail(_ t: Double) -> Double { t * 0.05 }      // capped at 0.05
     }
 
-    private func currentConfig() -> ReliefConfig {
+    func currentConfig() -> ReliefConfig {
         var config = ReliefConfig()
         config.mesh.reliefMm = Sliders.reliefMm(settings.depth)
         config.volume.lambdaRough = Sliders.lambdaRough(settings.smoothness)

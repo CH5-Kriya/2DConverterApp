@@ -46,7 +46,7 @@ struct SidebarView: View {
             AppMarkView()
                 .frame(width: 40, height: 40)
             if isExpanded {
-                Text("Kriya App")
+                Text("Tactura")
                     .font(Theme.Typography.wordmark)
                     .foregroundStyle(Theme.Palette.textPrimary)
                     .fixedSize()

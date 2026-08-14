@@ -1,3 +1,4 @@
+import ReliefCore
 import SwiftUI
 
 /// The editing workspace: the converted relief in 3D, with the parameters that
@@ -6,7 +7,7 @@ import SwiftUI
 struct ProjectDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var model: ProjectDetailViewModel
-    @State private var exportedURL: URL?
+    @State private var showingExport = false
     @State private var isRenaming = false
     @State private var draftName = ""
 
@@ -35,6 +36,16 @@ struct ProjectDetailView: View {
                 Task { await model.rename(to: draftName) }
             }
             .disabled(draftName.trimmingCharacters(in: .whitespaces).isEmpty)
+        }
+        .fullScreenCover(isPresented: $showingExport) {
+            if let height = model.height {
+                ExportSheet(projectName: model.project?.name ?? "relief",
+                            preview: model.preview,
+                            height: height,
+                            config: model.currentConfig(),
+                            relief: model.relief)
+                    .presentationBackground(.clear)
+            }
         }
     }
 
@@ -231,23 +242,15 @@ struct ProjectDetailView: View {
         }
     }
 
+    /// Opens the export sheet rather than writing a file here. Choosing the
+    /// format and the destination is a whole screen of its own, and the sheet
+    /// builds the solid from the exact height field on display.
     private var exportButton: some View {
         VStack(spacing: 12) {
-            Button("Export") {
-                Task { exportedURL = await model.exportSTL() }
-            }
-            .buttonStyle(.kriyaAccent)
-            .disabled(!model.canRefine)
-            .opacity(model.canRefine ? 1 : 0.5)
-
-            if let url = exportedURL {
-                ShareLink(item: url) {
-                    Label("Share STL", systemImage: "square.and.arrow.up")
-                        .font(Theme.Typography.caption)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(Theme.Palette.textSecondary)
-            }
+            Button("Export") { showingExport = true }
+                .buttonStyle(.tacturaAccent)
+                .disabled(!model.canRefine)
+                .opacity(model.canRefine ? 1 : 0.5)
 
             if let summary = model.summary {
                 Text(summary)

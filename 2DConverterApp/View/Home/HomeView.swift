@@ -70,12 +70,12 @@ private struct FirstRunHome: View {
                     Label("New Project", systemImage: "plus")
                         .labelStyle(.titleAndIcon)
                 }
-                .buttonStyle(.kriyaPrimary)
+                .buttonStyle(.tacturaPrimary)
 
                 Button("Tutorials") {
                     appState.select(.tutorials)
                 }
-                .buttonStyle(.kriyaSecondary)
+                .buttonStyle(.tacturaSecondary)
             }
             .padding(.top, 56)
         }
