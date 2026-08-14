@@ -36,6 +36,9 @@ struct RootView: View {
                 .toolbar(.hidden, for: .navigationBar)
                 .navigationDestination(for: AppDestination.self) { destination in
                     switch destination {
+                    case .crop(let id):
+                        CropView(projectID: id, dependencies: dependencies)
+                            .background(Theme.Palette.canvas)
                     case .project(let id):
                         ProjectDetailView(projectID: id, dependencies: dependencies)
                             .background(Theme.Palette.canvas)
