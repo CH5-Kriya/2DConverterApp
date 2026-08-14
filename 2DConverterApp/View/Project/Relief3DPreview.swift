@@ -29,9 +29,10 @@ struct Relief3DPreview: View {
                 // falls back to pivoting on.
             }
             .realityViewCameraControls(.orbit)
-            // Re-created whenever the camera has to be repositioned: the orbit
-            // controller owns its pose internally, so a fresh view is the
-            // reliable way to make a new one stick.
+            // Re-created only on the initial fit and on an explicit Reset: the
+            // orbit controller owns its pose internally, so a fresh view is the
+            // reliable way to make a new one stick. Deliberately *not* on every
+            // resize — see `frame(_:)` for what that costs.
             .id(stage.generation)
             .task(id: mesh?.id) { await stage.show(mesh) }
             .onChange(of: Framing(size: proxy.size, extent: mesh?.extent),
@@ -115,6 +116,8 @@ final class ReliefStage {
     private let camera = PerspectiveCamera()
     private let material: PhysicallyBasedMaterial
     private var loaded: UUID?
+    /// Whether the camera has been fitted to the model once.
+    private var hasFramed = false
     private var distance: Float = 0.4
 
     /// Straight-on with a little lift and offset: enough perspective to read
@@ -180,19 +183,36 @@ final class ReliefStage {
 
         guard abs(wanted - distance) > 0.001 else { return }
         distance = wanted
-        reposition()
+        aim()
+
+        // Only the *first* framing may re-create the view.
+        //
+        // `proxy.size` changes on every frame of a resize animation — collapsing
+        // the sidebar is 0.28 s, so roughly seventeen of them — and re-creating
+        // the RealityView each time stands up seventeen CAMetalLayers before the
+        // first is released. The drawable pool runs dry and Metal starts
+        // answering `nextDrawable` with nil. After the initial fit the camera
+        // simply moves; the view stays where it is.
+        if !hasFramed {
+            hasFramed = true
+            generation += 1
+        }
     }
 
     /// Puts the camera back where it started. The orbit controller keeps its
     /// own pose, so restoring the entity transform is only half of it — the
     /// view has to be re-created for the controller to pick the pose back up.
+    ///
+    /// This is the one gesture that earns a rebuild, because it is the one the
+    /// person explicitly asked for.
     func resetView() {
-        reposition()
+        aim()
+        generation += 1
     }
 
-    private func reposition() {
+    /// Moves the camera. Nothing else.
+    private func aim() {
         camera.look(at: .zero, from: Self.homeDirection * distance, relativeTo: nil)
-        generation += 1
     }
 
     /// A three-point rig with the key deliberately raking across the surface.
