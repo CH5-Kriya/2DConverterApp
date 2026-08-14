@@ -188,3 +188,46 @@ public enum ReliefImage {
                        intent: .defaultIntent)
     }
 }
+
+public extension ReliefImage {
+
+    /// 16-bit grayscale PNG, matching the reference's `height16.png`.
+    ///
+    /// Sixteen bits rather than eight is the whole point of writing this file:
+    /// 256 levels across an 8 mm relief is a 31 µm step, coarse enough to show
+    /// as terracing when the map is re-imported and raised again.
+    static func gray16PNG(_ samples: [UInt16], rows: Int, cols: Int) -> Data? {
+        guard samples.count == rows * cols else { return nil }
+
+        // PNG is big-endian; the samples arrive in host order.
+        var bytes = [UInt8]()
+        bytes.reserveCapacity(samples.count * 2)
+        for value in samples {
+            bytes.append(UInt8(value >> 8))
+            bytes.append(UInt8(value & 0xFF))
+        }
+
+        guard let provider = CGDataProvider(data: Data(bytes) as CFData),
+              let space = CGColorSpace(name: CGColorSpace.linearGray),
+              let image = CGImage(width: cols,
+                                  height: rows,
+                                  bitsPerComponent: 16,
+                                  bitsPerPixel: 16,
+                                  bytesPerRow: cols * 2,
+                                  space: space,
+                                  bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.none.rawValue)
+                                      .union(.byteOrder16Big),
+                                  provider: provider,
+                                  decode: nil,
+                                  shouldInterpolate: false,
+                                  intent: .defaultIntent)
+        else { return nil }
+
+        let out = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(
+            out, "public.png" as CFString, 1, nil) else { return nil }
+        CGImageDestinationAddImage(destination, image, nil)
+        guard CGImageDestinationFinalize(destination) else { return nil }
+        return out as Data
+    }
+}

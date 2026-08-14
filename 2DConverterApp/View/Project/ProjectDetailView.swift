@@ -1,10 +1,11 @@
 import SwiftUI
+import ReliefCore
 import UIKit
 
 struct ProjectDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var model: ProjectDetailViewModel
-    @State private var exportedURL: URL?
+    @State private var showingExport = false
 
     init(projectID: UUID, dependencies: AppDependencies) {
         _model = State(initialValue: ProjectDetailViewModel(
@@ -30,6 +31,16 @@ struct ProjectDetailView: View {
         }
         .task { await model.load() }
         .toolbar(.hidden, for: .navigationBar)
+        .fullScreenCover(isPresented: $showingExport) {
+            if let height = model.height {
+                ExportSheet(projectName: model.project?.name ?? "relief",
+                            preview: model.preview,
+                            height: height,
+                            config: model.currentConfig(),
+                            relief: model.relief)
+                    .presentationBackground(.clear)
+            }
+        }
     }
 
     @ViewBuilder
@@ -148,21 +159,18 @@ struct ProjectDetailView: View {
 
     @ViewBuilder
     private var exportRow: some View {
-        HStack(spacing: 16) {
-            Button("Export STL") {
-                Task { exportedURL = await model.exportSTL() }
-            }
-            .buttonStyle(.kriyaPrimary)
-
-            if let url = exportedURL {
-                ShareLink(item: url) {
-                    Label("Share", systemImage: "square.and.arrow.up")
-                        .font(Theme.Typography.caption)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(Theme.Palette.textSecondary)
-            }
+        Button {
+            showingExport = true
+        } label: {
+            Text("Export")
+                .font(Theme.Typography.button)
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 54)
+                .background(Theme.Palette.action,
+                            in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Source
