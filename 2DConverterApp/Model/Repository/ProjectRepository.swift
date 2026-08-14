@@ -14,7 +14,9 @@ final class InMemoryProjectRepository: ProjectRepository {
 
     private var storage: [UUID: Project]
 
-    init(seed: [Project] = Project.samples) {
+    /// Empty by default: a fresh install opens on the first-run state, not on
+    /// someone else's projects. Seeding is for previews and tests only.
+    init(seed: [Project] = []) {
         storage = Dictionary(uniqueKeysWithValues: seed.map { ($0.id, $0) })
     }
 

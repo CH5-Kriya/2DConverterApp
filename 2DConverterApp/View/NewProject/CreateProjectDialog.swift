@@ -140,8 +140,10 @@ private struct CreateOptionCard: View {
     }
 }
 
+#if DEBUG
 #Preview(traits: .landscapeLeft) {
     CreateProjectDialog(dependencies: .preview)
         .environment(AppState())
         .preferredColorScheme(.dark)
 }
+#endif

@@ -42,6 +42,7 @@ struct MyScansView: View {
     }
 }
 
+#if DEBUG
 #Preview(traits: .landscapeLeft) {
     NavigationStack {
         MyScansView(dependencies: .preview)
@@ -49,3 +50,4 @@ struct MyScansView: View {
     .background(Theme.Palette.canvas)
     .preferredColorScheme(.dark)
 }
+#endif

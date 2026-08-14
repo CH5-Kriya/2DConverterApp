@@ -69,10 +69,12 @@ struct StatusBadge: View {
     }
 }
 
+#if DEBUG
 #Preview {
-    ProjectCard(project: Project.samples[0])
+    ProjectCard(project: Project.previewSamples[0])
         .frame(width: 280)
         .padding()
         .background(Theme.Palette.canvas)
         .preferredColorScheme(.dark)
 }
+#endif

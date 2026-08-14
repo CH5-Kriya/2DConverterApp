@@ -42,17 +42,3 @@ enum ProjectStatus: String, Hashable, CaseIterable {
         }
     }
 }
-
-extension Project {
-    static let samples: [Project] = [
-        Project(name: "Masolino — Tabitha",
-                createdAt: .now.addingTimeInterval(-86_400 * 2),
-                status: .exported),
-        Project(name: "Studio portrait",
-                createdAt: .now.addingTimeInterval(-86_400),
-                status: .ready),
-        Project(name: "Poster study",
-                createdAt: .now.addingTimeInterval(-3_600),
-                status: .draft),
-    ]
-}
