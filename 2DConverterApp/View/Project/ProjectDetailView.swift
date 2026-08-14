@@ -4,17 +4,19 @@ import UIKit
 struct ProjectDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var model: ProjectDetailViewModel
+    @State private var exportedURL: URL?
 
     init(projectID: UUID, dependencies: AppDependencies) {
         _model = State(initialValue: ProjectDetailViewModel(
             projectID: projectID,
-            projects: dependencies.projects
+            projects: dependencies.projects,
+            relief: dependencies.relief
         ))
     }
 
     var body: some View {
         ScreenScaffold(title: model.project?.name ?? "Project",
-                       subtitle: model.project?.status.label) {
+                       subtitle: model.summary ?? model.project?.status.label) {
             content
         } accessory: {
             Button {
@@ -40,12 +42,8 @@ struct ProjectDetailView: View {
                 sourceImage(for: project)
                     .frame(maxWidth: .infinity)
 
-                EmptyStateView(
-                    systemImage: "cube.transparent",
-                    title: "Preview not wired up",
-                    message: "The 2.5D preview and its controls go here once the conversion screens are designed."
-                )
-                .frame(maxWidth: .infinity)
+                reliefPanel
+                    .frame(maxWidth: .infinity)
             }
         } else {
             EmptyStateView(
@@ -55,6 +53,119 @@ struct ProjectDetailView: View {
             )
         }
     }
+
+    // MARK: - Relief
+
+    @ViewBuilder
+    private var reliefPanel: some View {
+        VStack(alignment: .leading, spacing: 24) {
+            preview
+
+            switch model.stage {
+            case .converting(let label, let fraction):
+                progress(label: label, fraction: fraction)
+            case .failed(let message):
+                Label(message, systemImage: "exclamationmark.triangle")
+                    .font(Theme.Typography.caption)
+                    .foregroundStyle(Color(hex: 0xE06C6C))
+            case .ready:
+                refinement
+                exportRow
+            case .idle:
+                EmptyView()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var preview: some View {
+        RoundedRectangle(cornerRadius: Theme.Metrics.cardRadius, style: .continuous)
+            .fill(Theme.Palette.surface)
+            .aspectRatio(4 / 3, contentMode: .fit)
+            .overlay {
+                if let cg = model.preview {
+                    // Raking light, not a flat height map: a grazing key light
+                    // is how relief legibility is actually judged by eye.
+                    Image(decorative: cg, scale: 1)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.Metrics.cardRadius,
+                                                    style: .continuous))
+                } else {
+                    Image(systemName: "cube.transparent")
+                        .font(.system(size: 34, weight: .light))
+                        .foregroundStyle(Theme.Palette.textTertiary)
+                }
+            }
+    }
+
+    @ViewBuilder
+    private func progress(label: String, fraction: Double) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(label)
+                .font(Theme.Typography.caption)
+                .foregroundStyle(Theme.Palette.textSecondary)
+            ProgressView(value: fraction)
+                .tint(Theme.Palette.accentFill)
+        }
+    }
+
+    @ViewBuilder
+    private var refinement: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("Refine")
+                    .font(Theme.Typography.rowTitle)
+                    .foregroundStyle(Theme.Palette.textPrimary)
+                Spacer()
+                Button("Reset") { model.resetSliders() }
+                    .font(Theme.Typography.caption)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Theme.Palette.textSecondary)
+            }
+
+            slider("Depth", value: $model.depth)
+            slider("Smoothness", value: $model.smoothness)
+            slider("Texture", value: $model.texture)
+            slider("Outline", value: $model.outline)
+        }
+    }
+
+    @ViewBuilder
+    private func slider(_ title: String, value: Binding<Double>) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(Theme.Typography.caption)
+                .foregroundStyle(Theme.Palette.textSecondary)
+            Slider(value: value, in: 0...1) { editing in
+                // Recompute when the finger lifts. The blend itself is cheap,
+                // but re-running it on every touch event is wasted work.
+                if !editing { model.refine() }
+            }
+            .tint(Theme.Palette.accentFill)
+        }
+    }
+
+    @ViewBuilder
+    private var exportRow: some View {
+        HStack(spacing: 16) {
+            Button("Export STL") {
+                Task { exportedURL = await model.exportSTL() }
+            }
+            .buttonStyle(.kriyaPrimary)
+
+            if let url = exportedURL {
+                ShareLink(item: url) {
+                    Label("Share", systemImage: "square.and.arrow.up")
+                        .font(Theme.Typography.caption)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Theme.Palette.textSecondary)
+            }
+        }
+    }
+
+    // MARK: - Source
 
     @ViewBuilder
     private func sourceImage(for project: Project) -> some View {
