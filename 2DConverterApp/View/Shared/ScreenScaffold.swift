@@ -21,6 +21,12 @@ struct ScreenScaffold<Content: View, Accessory: View>: View {
                             .foregroundStyle(Theme.Palette.textSecondary)
                     }
                 }
+                // The title owns its width. Without this the accessory — which
+                // can be a whole row of controls — compresses the heading until
+                // it wraps one letter per line, which is how it looked before.
+                .fixedSize(horizontal: true, vertical: false)
+                .layoutPriority(1)
+
                 Spacer(minLength: 16)
                 accessory()
             }

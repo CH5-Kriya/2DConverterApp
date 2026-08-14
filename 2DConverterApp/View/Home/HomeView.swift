@@ -70,12 +70,12 @@ private struct FirstRunHome: View {
                     Label("New Project", systemImage: "plus")
                         .labelStyle(.titleAndIcon)
                 }
-                .buttonStyle(.kriyaPrimary)
+                .buttonStyle(.tacturaPrimary)
 
                 Button("Tutorials") {
                     appState.select(.tutorials)
                 }
-                .buttonStyle(.kriyaSecondary)
+                .buttonStyle(.tacturaSecondary)
             }
             .padding(.top, 56)
         }
@@ -120,6 +120,7 @@ private struct ReturningHome: View {
     }
 }
 
+#if DEBUG
 #Preview("Returning", traits: .landscapeLeft) {
     HomeView(dependencies: .preview)
         .environment(AppState())
@@ -133,3 +134,4 @@ private struct ReturningHome: View {
         .background(Theme.Palette.canvas)
         .preferredColorScheme(.dark)
 }
+#endif

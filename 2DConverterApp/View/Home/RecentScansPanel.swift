@@ -100,9 +100,10 @@ private struct RecentScanRow: View {
     }
 }
 
+#if DEBUG
 #Preview {
     NavigationStack {
-        RecentScansPanel(recent: Project.samples)
+        RecentScansPanel(recent: Project.previewSamples)
             .frame(width: 455, height: 450)
             .padding()
     }
@@ -110,3 +111,4 @@ private struct RecentScanRow: View {
     .background(Theme.Palette.canvas)
     .preferredColorScheme(.dark)
 }
+#endif

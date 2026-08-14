@@ -18,10 +18,25 @@ enum Theme {
         static let onAccent = Color(hex: 0x0A0A0A)
 
         /// The one saturated colour in the palette, reserved for moving forward
-        /// — Continue here, Export at the end. Everything else in this app is
-        /// greyscale on purpose, so a blue button reads as "this is the action"
-        /// without any other emphasis.
+        /// — Continue on the crop screen, Export at the end, and the progress
+        /// of an export. Everything else in this app is greyscale on purpose,
+        /// so a blue button reads as "this is the action" without any other
+        /// emphasis.
+        ///
+        /// The workspace's Export button uses this too. Figma declares the
+        /// style as Main-Blue #0078FD, which is a shade off this one; keeping a
+        /// single token matters more than the four-point difference, so the
+        /// export sheet and the workspace cannot drift apart.
         static let action = Color(hex: 0x0A84FF)
+
+        // The editing workspace runs a shade lighter than the rest of the app:
+        // a relief read against pure black loses its own shadows, which are the
+        // whole point of the preview.
+        static let workspaceCanvas = Color(hex: 0x2A2A2A)
+        static let workspacePanel = Color(hex: 0x0D0D0D)
+        static let workspaceControl = Color(hex: 0x0B0B0B)
+        static let workspaceStroke = Color.white.opacity(0.5)
+        static let workspaceLabel = Color(hex: 0xF8F8F8)
     }
 
     enum Metrics {
@@ -38,6 +53,12 @@ enum Theme {
         static let buttonWidth: CGFloat = 320
 
         static let sidebarAnimation: Animation = .snappy(duration: 0.28)
+
+        static let workspacePanelWidth: CGFloat = 286
+        static let workspacePanelRadius: CGFloat = 16
+        static let workspaceControlRadius: CGFloat = 12
+        static let workspaceChipRadius: CGFloat = 8
+        static let workspaceControlHeight: CGFloat = 42
     }
 
     enum Typography {

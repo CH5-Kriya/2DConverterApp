@@ -7,7 +7,7 @@ final class ProjectDetailViewModel {
 
     private let projects: ProjectRepository
     private let projectID: UUID
-    private let relief: ReliefService
+    let relief: ReliefService
 
     private(set) var project: Project?
     private(set) var isLoading = true
@@ -26,27 +26,149 @@ final class ProjectDetailViewModel {
 
     private(set) var stage: Stage = .idle
     private(set) var preview: CGImage?
+    private(set) var previewMesh: ReliefPreviewMesh?
     private(set) var summary: String?
 
     private var output: ReliefService.Output?
-    private var height: Plane?
+    /// Exposed so the export sheet can build the solid from the exact
+    /// field on screen rather than re-deriving one.
+    private(set) var height: Plane?
     private var task: Task<Void, Never>?
 
-    /// The four refinement sliders, all normalised 0–1.
+    // MARK: Parameters
+
+    /// A named starting point for the four sliders. "Details" is the pipeline's
+    /// own default tuning; "Simple" trades surface detail for a shape that
+    /// prints cleanly at a coarse layer height.
+    enum Preset: String, CaseIterable, Identifiable {
+        case simple = "Simple"
+        case details = "Details"
+
+        var id: Self { self }
+
+        var settings: Settings {
+            switch self {
+            case .simple:
+                Settings(preset: .simple, depth: 0.5, smoothness: 0.8,
+                         texture: 0.25, outline: 0.6)
+            case .details:
+                Settings(preset: .details, depth: Sliders.depthDefault,
+                         smoothness: Sliders.smoothDefault,
+                         texture: Sliders.textureDefault,
+                         outline: Sliders.outlineDefault)
+            }
+        }
+    }
+
+    /// The four sliders, all normalised 0–1, plus the preset they came from.
     ///
     /// Every one of them lives in the cheap half of the pipeline, so moving one
-    /// re-blends cached layers instead of re-running the solver.
-    var depth: Double = Sliders.depthDefault      // mesh.relief_mm
-    var smoothness: Double = Sliders.smoothDefault // lambda_rough vs lambda_main
-    var texture: Double = Sliders.textureDefault   // lambda_detail
-    var outline: Double = Sliders.outlineDefault   // ordering_strength
+    /// re-blends cached layers instead of re-running the solver. Grouping them
+    /// into one value is what makes undo a matter of swapping a struct.
+    struct Settings: Equatable {
+        var preset: Preset = .details
+        var depth: Double = Sliders.depthDefault      // mesh.relief_mm
+        var smoothness: Double = Sliders.smoothDefault // lambda_rough vs lambda_main
+        var texture: Double = Sliders.textureDefault   // lambda_detail
+        var outline: Double = Sliders.outlineDefault   // ordering_strength
+    }
+
+    /// One of the four sliders. An enum rather than an index into a label
+    /// array: the array and the bindings can drift apart, this can't.
+    enum Control: String, CaseIterable, Identifiable {
+        case depth = "Depth"
+        case smoothness = "Smoothness"
+        case texture = "Texture"
+        case outline = "Outline"
+
+        var id: Self { self }
+        var title: String { rawValue }
+    }
+
+    var settings = Settings()
+
+    var depth: Double { settings.depth }
+    var smoothness: Double { settings.smoothness }
+    var texture: Double { settings.texture }
+    var outline: Double { settings.outline }
 
     var canRefine: Bool { output != nil }
+
+    func value(for control: Control) -> Double {
+        switch control {
+        case .depth:      settings.depth
+        case .smoothness: settings.smoothness
+        case .texture:    settings.texture
+        case .outline:    settings.outline
+        }
+    }
+
+    func setValue(_ value: Double, for control: Control) {
+        switch control {
+        case .depth:      settings.depth = value
+        case .smoothness: settings.smoothness = value
+        case .texture:    settings.texture = value
+        case .outline:    settings.outline = value
+        }
+    }
+
+    /// Only Depth is a length. Smoothness, Texture and Outline are blend
+    /// weights, so labelling them "mm" would put a fabrication number on
+    /// something that isn't one.
+    func readout(for control: Control) -> String {
+        switch control {
+        case .depth:
+            String(format: "%.0f mm", Sliders.reliefMm(settings.depth))
+        case .smoothness, .texture, .outline:
+            "\(Int((value(for: control) * 100).rounded()))%"
+        }
+    }
+
+    func select(_ preset: Preset) {
+        guard preset != settings.preset else { return }
+        settings = preset.settings
+        commit()
+    }
 
     init(projectID: UUID, projects: ProjectRepository, relief: ReliefService) {
         self.projectID = projectID
         self.projects = projects
         self.relief = relief
+        history = [settings]
+    }
+
+    // MARK: Edit history
+
+    private var history: [Settings] = []
+    private var historyIndex = 0
+
+    var canUndo: Bool { historyIndex > 0 }
+    var canRedo: Bool { historyIndex < history.count - 1 }
+
+    /// Records the current settings as an undoable step and re-blends.
+    ///
+    /// Called when an edit finishes rather than while it is in flight — a
+    /// drag that sweeps a slider across its range is one edit, not sixty.
+    func commit() {
+        guard settings != history[historyIndex] else { return }
+        history.removeSubrange((historyIndex + 1)...)
+        history.append(settings)
+        historyIndex = history.count - 1
+        refine()
+    }
+
+    func undo() {
+        guard canUndo else { return }
+        historyIndex -= 1
+        settings = history[historyIndex]
+        refine()
+    }
+
+    func redo() {
+        guard canRedo else { return }
+        historyIndex += 1
+        settings = history[historyIndex]
+        refine()
     }
 
     func load() async {
@@ -90,6 +212,8 @@ final class ProjectDetailViewModel {
             preview = ReliefImage.grayImage(result.previewShaded,
                                             rows: result.previewRows,
                                             cols: result.previewCols)
+            previewMesh = await service.previewMesh(height: result.height,
+                                                    config: config)
             summary = "\(result.routeMode) · \(result.regionCount) regions"
             stage = .ready
             await setStatus(.ready)
@@ -111,40 +235,24 @@ final class ProjectDetailViewModel {
         task = Task { [weak self] in
             let (newHeight, shaded) = await service.reblend(output, config: config)
             guard !Task.isCancelled else { return }
+            let mesh = await service.previewMesh(height: newHeight, config: config)
+            guard !Task.isCancelled else { return }
             await MainActor.run {
                 self?.height = newHeight
                 self?.preview = ReliefImage.grayImage(shaded, rows: newHeight.rows,
                                                       cols: newHeight.cols)
+                self?.previewMesh = mesh
             }
         }
     }
 
     func resetSliders() {
-        depth = Sliders.depthDefault
-        smoothness = Sliders.smoothDefault
-        texture = Sliders.textureDefault
-        outline = Sliders.outlineDefault
-        refine()
+        settings = settings.preset.settings
+        commit()
     }
 
-    func exportSTL() async -> URL? {
-        guard let height else { return nil }
-        let (data, mesh) = await relief.exportSTL(height: height, config: currentConfig())
-        let name = (project?.name ?? "relief").replacingOccurrences(of: "/", with: "-")
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("\(name).stl")
-        do {
-            try data.write(to: url)
-            summary = String(format: "%.0f x %.0f mm · %d faces · %@",
-                             mesh.widthMm, mesh.heightMm, mesh.faceCount,
-                             mesh.isWatertight ? "watertight" : "NOT watertight")
-            await setStatus(.exported)
-            return url
-        } catch {
-            stage = .failed(error.localizedDescription)
-            return nil
-        }
-    }
+    // Writing the file used to live here. It now belongs to `ExportViewModel`,
+    // behind the export sheet, which picks the format and the destination.
 
     // MARK: - Config
 
@@ -161,14 +269,14 @@ final class ProjectDetailViewModel {
         static func lambdaDetail(_ t: Double) -> Double { t * 0.05 }      // capped at 0.05
     }
 
-    private func currentConfig() -> ReliefConfig {
+    func currentConfig() -> ReliefConfig {
         var config = ReliefConfig()
-        config.mesh.reliefMm = Sliders.reliefMm(depth)
-        config.volume.lambdaRough = Sliders.lambdaRough(smoothness)
-        config.volume.lambdaMain = Sliders.lambdaMain(smoothness)
-        config.volume.lambdaDetail = Sliders.lambdaDetail(texture)
-        config.volume.orderingStrength = outline
-        config.volume.enforceOrdering = outline > 0
+        config.mesh.reliefMm = Sliders.reliefMm(settings.depth)
+        config.volume.lambdaRough = Sliders.lambdaRough(settings.smoothness)
+        config.volume.lambdaMain = Sliders.lambdaMain(settings.smoothness)
+        config.volume.lambdaDetail = Sliders.lambdaDetail(settings.texture)
+        config.volume.orderingStrength = settings.outline
+        config.volume.enforceOrdering = settings.outline > 0
         config.export.intermediates = false
         return config
     }
