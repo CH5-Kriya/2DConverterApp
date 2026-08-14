@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct KriyaPrimaryButtonStyle: ButtonStyle {
+struct TacturaPrimaryButtonStyle: ButtonStyle {
     var fillsWidth = false
 
     func makeBody(configuration: Configuration) -> some View {
@@ -21,7 +21,7 @@ struct KriyaPrimaryButtonStyle: ButtonStyle {
     }
 }
 
-struct KriyaSecondaryButtonStyle: ButtonStyle {
+struct TacturaSecondaryButtonStyle: ButtonStyle {
     var fillsWidth = false
 
     func makeBody(configuration: Configuration) -> some View {
@@ -42,16 +42,16 @@ struct KriyaSecondaryButtonStyle: ButtonStyle {
     }
 }
 
-extension ButtonStyle where Self == KriyaPrimaryButtonStyle {
-    static var kriyaPrimary: KriyaPrimaryButtonStyle { .init() }
-    static func kriyaPrimary(fillsWidth: Bool) -> KriyaPrimaryButtonStyle {
+extension ButtonStyle where Self == TacturaPrimaryButtonStyle {
+    static var tacturaPrimary: TacturaPrimaryButtonStyle { .init() }
+    static func tacturaPrimary(fillsWidth: Bool) -> TacturaPrimaryButtonStyle {
         .init(fillsWidth: fillsWidth)
     }
 }
 
-extension ButtonStyle where Self == KriyaSecondaryButtonStyle {
-    static var kriyaSecondary: KriyaSecondaryButtonStyle { .init() }
-    static func kriyaSecondary(fillsWidth: Bool) -> KriyaSecondaryButtonStyle {
+extension ButtonStyle where Self == TacturaSecondaryButtonStyle {
+    static var tacturaSecondary: TacturaSecondaryButtonStyle { .init() }
+    static func tacturaSecondary(fillsWidth: Bool) -> TacturaSecondaryButtonStyle {
         .init(fillsWidth: fillsWidth)
     }
 }

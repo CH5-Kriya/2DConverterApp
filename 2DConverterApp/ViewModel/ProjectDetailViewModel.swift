@@ -7,7 +7,7 @@ final class ProjectDetailViewModel {
 
     private let projects: ProjectRepository
     private let projectID: UUID
-    private let relief: ReliefService
+    let relief: ReliefService
 
     private(set) var project: Project?
     private(set) var isLoading = true
@@ -29,7 +29,9 @@ final class ProjectDetailViewModel {
     private(set) var summary: String?
 
     private var output: ReliefService.Output?
-    private var height: Plane?
+    /// Exposed so the export sheet can build the solid from the exact
+    /// field on screen rather than re-deriving one.
+    private(set) var height: Plane?
     private var task: Task<Void, Never>?
 
     /// The four refinement sliders, all normalised 0–1.
@@ -161,7 +163,7 @@ final class ProjectDetailViewModel {
         static func lambdaDetail(_ t: Double) -> Double { t * 0.05 }      // capped at 0.05
     }
 
-    private func currentConfig() -> ReliefConfig {
+    func currentConfig() -> ReliefConfig {
         var config = ReliefConfig()
         config.mesh.reliefMm = Sliders.reliefMm(depth)
         config.volume.lambdaRough = Sliders.lambdaRough(smoothness)
