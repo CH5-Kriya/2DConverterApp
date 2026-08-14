@@ -1,11 +1,15 @@
-import SwiftUI
 import ReliefCore
-import UIKit
+import SwiftUI
 
+/// The editing workspace: the converted relief in 3D, with the parameters that
+/// shape it alongside. The whole screen exists so the two can be read together —
+/// a slider whose effect you can't see is just a number.
 struct ProjectDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var model: ProjectDetailViewModel
     @State private var showingExport = false
+    @State private var isRenaming = false
+    @State private var draftName = ""
 
     init(projectID: UUID, dependencies: AppDependencies) {
         _model = State(initialValue: ProjectDetailViewModel(
@@ -16,21 +20,23 @@ struct ProjectDetailView: View {
     }
 
     var body: some View {
-        ScreenScaffold(title: model.project?.name ?? "Project",
-                       subtitle: model.summary ?? model.project?.status.label) {
+        VStack(spacing: 0) {
+            header
             content
-        } accessory: {
-            Button {
-                dismiss()
-            } label: {
-                Label("Back", systemImage: "chevron.left")
-                    .font(.system(size: 17, weight: .medium))
-                    .foregroundStyle(Theme.Palette.textSecondary)
-            }
-            .buttonStyle(.plain)
         }
+        .padding(32)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Theme.Palette.workspaceCanvas)
         .task { await model.load() }
         .toolbar(.hidden, for: .navigationBar)
+        .alert("Rename Project", isPresented: $isRenaming) {
+            TextField("Name", text: $draftName)
+            Button("Cancel", role: .cancel) {}
+            Button("Rename") {
+                Task { await model.rename(to: draftName) }
+            }
+            .disabled(draftName.trimmingCharacters(in: .whitespaces).isEmpty)
+        }
         .fullScreenCover(isPresented: $showingExport) {
             if let height = model.height {
                 ExportSheet(projectName: model.project?.name ?? "relief",
@@ -43,161 +49,232 @@ struct ProjectDetailView: View {
         }
     }
 
-    @ViewBuilder
-    private var content: some View {
-        if model.isLoading {
-            ProgressView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if let project = model.project {
-            HStack(alignment: .top, spacing: 32) {
-                sourceImage(for: project)
-                    .frame(maxWidth: .infinity)
+    // MARK: - Header
 
-                reliefPanel
-                    .frame(maxWidth: .infinity)
+    private var header: some View {
+        ZStack {
+            HStack {
+                Button {
+                    dismiss()
+                } label: {
+                    Label("Back", systemImage: "chevron.backward")
+                        .labelStyle(.titleAndIcon)
+                        .padding(.horizontal, 12)
+                }
+                .buttonStyle(.workspaceChip)
+                Spacer()
             }
-        } else {
-            EmptyStateView(
-                systemImage: "questionmark.folder",
-                title: "Project not found",
-                message: "It may have been deleted."
-            )
-        }
-    }
 
-    // MARK: - Relief
-
-    @ViewBuilder
-    private var reliefPanel: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            preview
-
-            switch model.stage {
-            case .converting(let label, let fraction):
-                progress(label: label, fraction: fraction)
-            case .failed(let message):
-                Label(message, systemImage: "exclamationmark.triangle")
-                    .font(Theme.Typography.caption)
-                    .foregroundStyle(Color(hex: 0xE06C6C))
-            case .ready:
-                refinement
-                exportRow
-            case .idle:
-                EmptyView()
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var preview: some View {
-        RoundedRectangle(cornerRadius: Theme.Metrics.cardRadius, style: .continuous)
-            .fill(Theme.Palette.surface)
-            .aspectRatio(4 / 3, contentMode: .fit)
-            .overlay {
-                if let cg = model.preview {
-                    // Raking light, not a flat height map: a grazing key light
-                    // is how relief legibility is actually judged by eye.
-                    Image(decorative: cg, scale: 1)
+            Button {
+                draftName = model.project?.name ?? ""
+                isRenaming = true
+            } label: {
+                HStack(spacing: 8) {
+                    Text(model.project?.name ?? "Project")
+                        .font(.system(size: 24))
+                        .underline()
+                        .foregroundStyle(Theme.Palette.workspaceLabel.opacity(0.9))
+                    Image("RenameProject")
                         .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .clipShape(RoundedRectangle(cornerRadius: Theme.Metrics.cardRadius,
-                                                    style: .continuous))
-                } else {
-                    Image(systemName: "cube.transparent")
-                        .font(.system(size: 34, weight: .light))
-                        .foregroundStyle(Theme.Palette.textTertiary)
+                        .renderingMode(.template)
+                        .frame(width: 18, height: 18)
+                        .foregroundStyle(Theme.Palette.workspaceLabel.opacity(0.9))
                 }
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Rename project")
+        }
+        .frame(height: Theme.Metrics.workspaceControlHeight)
     }
 
+    // MARK: - Body
+
+    private var content: some View {
+        HStack(alignment: .bottom, spacing: 24) {
+            VStack(spacing: 16) {
+                viewport
+                HStack {
+                    Spacer()
+                    historyControls
+                }
+            }
+
+            VStack(spacing: 0) {
+                Spacer(minLength: 0)
+                configurationPanel
+                Spacer(minLength: 0)
+                exportButton
+            }
+            .frame(width: Theme.Metrics.workspacePanelWidth)
+        }
+        .padding(.top, 16)
+    }
+
+    /// One state at a time. The 3D view renders whatever mesh it is given and
+    /// nothing else, so the screen — which is the only thing that knows why
+    /// there is no mesh — owns every empty and in-flight state.
     @ViewBuilder
+    private var viewport: some View {
+        switch model.stage {
+        case .failed(let message):
+            EmptyStateView(systemImage: "exclamationmark.triangle",
+                           title: "Conversion failed",
+                           message: message)
+
+        case .idle where model.project?.sourceImageData == nil:
+            EmptyStateView(systemImage: "photo.badge.plus",
+                           title: "No source image",
+                           message: "This project has no photo to convert.")
+
+        case .converting(let label, let fraction):
+            Relief3DPreview(mesh: model.previewMesh)
+                .overlay { progress(label: label, fraction: fraction) }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+        case .idle, .ready:
+            Relief3DPreview(mesh: model.previewMesh)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
     private func progress(label: String, fraction: Double) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(spacing: 14) {
             Text(label)
                 .font(Theme.Typography.caption)
                 .foregroundStyle(Theme.Palette.textSecondary)
             ProgressView(value: fraction)
                 .tint(Theme.Palette.accentFill)
+                .frame(width: 260)
         }
+        .padding(28)
+        .background(Theme.Palette.workspacePanel.opacity(0.86),
+                    in: RoundedRectangle(cornerRadius: Theme.Metrics.workspacePanelRadius,
+                                         style: .continuous))
     }
 
-    @ViewBuilder
-    private var refinement: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("Refine")
-                    .font(Theme.Typography.rowTitle)
-                    .foregroundStyle(Theme.Palette.textPrimary)
-                Spacer()
-                Button("Reset") { model.resetSliders() }
-                    .font(Theme.Typography.caption)
-                    .buttonStyle(.plain)
-                    .foregroundStyle(Theme.Palette.textSecondary)
+    private var historyControls: some View {
+        HStack(spacing: 12) {
+            Button {
+                model.undo()
+            } label: {
+                Image(systemName: "arrow.uturn.left")
+            }
+            .buttonStyle(.workspaceChip)
+            .disabled(!model.canUndo)
+            .accessibilityLabel("Undo")
+
+            Button {
+                model.redo()
+            } label: {
+                Image(systemName: "arrow.uturn.right")
+            }
+            .buttonStyle(.workspaceChip)
+            .disabled(!model.canRedo)
+            .accessibilityLabel("Redo")
+        }
+        .opacity(model.canRefine ? 1 : 0.35)
+    }
+
+    // MARK: - Configuration
+
+    private var configurationPanel: some View {
+        VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: 16) {
+                sectionTitle("Preset")
+                Picker("Preset", selection: presetBinding) {
+                    ForEach(ProjectDetailViewModel.Preset.allCases) { preset in
+                        Text(preset.rawValue).tag(preset)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
             }
 
-            slider("Depth", value: $model.depth)
-            slider("Smoothness", value: $model.smoothness)
-            slider("Texture", value: $model.texture)
-            slider("Outline", value: $model.outline)
-        }
-    }
-
-    @ViewBuilder
-    private func slider(_ title: String, value: Binding<Double>) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(Theme.Typography.caption)
-                .foregroundStyle(Theme.Palette.textSecondary)
-            Slider(value: value, in: 0...1) { editing in
-                // Recompute when the finger lifts. The blend itself is cheap,
-                // but re-running it on every touch event is wasted work.
-                if !editing { model.refine() }
-            }
-            .tint(Theme.Palette.accentFill)
-        }
-    }
-
-    @ViewBuilder
-    private var exportRow: some View {
-        Button {
-            showingExport = true
-        } label: {
-            Text("Export")
-                .font(Theme.Typography.button)
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: 54)
-                .background(Theme.Palette.action,
-                            in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        }
-        .buttonStyle(.plain)
-    }
-
-    // MARK: - Source
-
-    @ViewBuilder
-    private func sourceImage(for project: Project) -> some View {
-        RoundedRectangle(cornerRadius: Theme.Metrics.cardRadius, style: .continuous)
-            .fill(Theme.Palette.surface)
-            .aspectRatio(4 / 3, contentMode: .fit)
-            .overlay {
-                if let data = project.sourceImageData, let image = UIImage(data: data) {
-                    Image(uiImage: image)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .clipShape(RoundedRectangle(cornerRadius: Theme.Metrics.cardRadius,
-                                                    style: .continuous))
-                } else {
-                    Image(systemName: "photo")
-                        .font(.system(size: 34, weight: .light))
-                        .foregroundStyle(Theme.Palette.textTertiary)
+            VStack(alignment: .leading, spacing: 16) {
+                sectionTitle("Configuration")
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(ProjectDetailViewModel.Control.allCases) { control in
+                        parameterRow(control)
+                    }
                 }
             }
+        }
+        .padding(24)
+        .frame(width: Theme.Metrics.workspacePanelWidth, alignment: .leading)
+        .background(Theme.Palette.workspacePanel,
+                    in: RoundedRectangle(cornerRadius: Theme.Metrics.workspacePanelRadius,
+                                         style: .continuous))
+        .disabled(!model.canRefine)
+        .opacity(model.canRefine ? 1 : 0.5)
+    }
+
+    private func sectionTitle(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(Theme.Palette.textPrimary)
+    }
+
+    private func parameterRow(_ control: ProjectDetailViewModel.Control) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(control.title)
+                .font(.system(size: 14))
+                .foregroundStyle(Theme.Palette.textPrimary)
+
+            HStack(spacing: 16) {
+                Slider(value: binding(for: control), in: 0...1) { editing in
+                    // One drag is one edit. Committing per touch event would
+                    // fill the undo stack with sixty steps nobody asked for,
+                    // and re-blend on every one of them.
+                    if !editing { model.commit() }
+                }
+                .tint(Theme.Palette.accentFill)
+
+                Text(model.readout(for: control))
+                    .font(.system(size: 12))
+                    .monospacedDigit()
+                    .foregroundStyle(Theme.Palette.textPrimary)
+                    .frame(width: 56, height: 30)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .strokeBorder(Theme.Palette.workspaceStroke, lineWidth: 0.3)
+                    )
+            }
+        }
+    }
+
+    /// Opens the export sheet rather than writing a file here. Choosing the
+    /// format and the destination is a whole screen of its own, and the sheet
+    /// builds the solid from the exact height field on display.
+    private var exportButton: some View {
+        VStack(spacing: 12) {
+            Button("Export") { showingExport = true }
+                .buttonStyle(.tacturaAccent)
+                .disabled(!model.canRefine)
+                .opacity(model.canRefine ? 1 : 0.5)
+
+            if let summary = model.summary {
+                Text(summary)
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.Palette.textTertiary)
+                    .multilineTextAlignment(.center)
+            }
+        }
+    }
+
+    // MARK: - Bindings
+
+    private var presetBinding: Binding<ProjectDetailViewModel.Preset> {
+        Binding { model.settings.preset } set: { model.select($0) }
+    }
+
+    private func binding(for control: ProjectDetailViewModel.Control) -> Binding<Double> {
+        Binding { model.value(for: control) } set: { model.setValue($0, for: control) }
     }
 }
 
+#if DEBUG
 #Preview(traits: .landscapeLeft) {
-    ProjectDetailView(projectID: Project.samples[0].id, dependencies: .preview)
-        .background(Theme.Palette.canvas)
+    ProjectDetailView(projectID: Project.previewSamples[0].id, dependencies: .preview)
         .preferredColorScheme(.dark)
 }
+#endif

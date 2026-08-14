@@ -17,7 +17,9 @@ final class AppDependencies {
         self.relief = ReliefService()
     }
 
+    #if DEBUG
     static var preview: AppDependencies {
-        AppDependencies(projects: InMemoryProjectRepository())
+        AppDependencies(projects: InMemoryProjectRepository(seed: Project.previewSamples))
     }
+    #endif
 }

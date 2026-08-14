@@ -99,9 +99,10 @@ struct ScanGridCard: View {
     }
 }
 
+#if DEBUG
 #Preview("List") {
     VStack(spacing: 0) {
-        ForEach(Project.samples) { ScanListRow(project: $0) }
+        ForEach(Project.previewSamples) { ScanListRow(project: $0) }
     }
     .padding(40)
     .background(Theme.Palette.canvas)
@@ -110,9 +111,10 @@ struct ScanGridCard: View {
 
 #Preview("Grid") {
     HStack(spacing: 24) {
-        ForEach(Project.samples) { ScanGridCard(project: $0).frame(width: 260) }
+        ForEach(Project.previewSamples) { ScanGridCard(project: $0).frame(width: 260) }
     }
     .padding(40)
     .background(Theme.Palette.canvas)
     .preferredColorScheme(.dark)
 }
+#endif

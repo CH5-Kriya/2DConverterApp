@@ -57,8 +57,10 @@ struct RootView: View {
     }
 }
 
+#if DEBUG
 #Preview(traits: .landscapeLeft) {
     RootView()
         .environment(AppState())
         .environment(AppDependencies.preview)
 }
+#endif

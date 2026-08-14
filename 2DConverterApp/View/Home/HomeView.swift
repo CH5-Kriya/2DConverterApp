@@ -120,6 +120,7 @@ private struct ReturningHome: View {
     }
 }
 
+#if DEBUG
 #Preview("Returning", traits: .landscapeLeft) {
     HomeView(dependencies: .preview)
         .environment(AppState())
@@ -133,3 +134,4 @@ private struct ReturningHome: View {
         .background(Theme.Palette.canvas)
         .preferredColorScheme(.dark)
 }
+#endif

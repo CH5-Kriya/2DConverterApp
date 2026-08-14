@@ -87,6 +87,15 @@ actor ReliefService {
         return (height, ReliefImage.shade(height))
     }
 
+    /// The height field closed into a solid for the on-screen 3D preview.
+    ///
+    /// Separate from `exportSTL` on purpose: the export mesh is built at the
+    /// print grid and decimated to a face budget a slicer wants, which is far
+    /// more work than a view that rebuilds on every slider release can afford.
+    func previewMesh(height: Plane, config: ReliefConfig) -> ReliefPreviewMesh {
+        ReliefPreviewMeshBuilder.build(height: height, config: config.mesh)
+    }
+
     /// Stages 6–7, run on export rather than on every slider move.
     func exportSTL(height: Plane, config: ReliefConfig) -> (Data, SolidMesh) {
         let mesh = Mesh.build(height: height, config: config.mesh)
