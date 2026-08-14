@@ -53,7 +53,7 @@ struct SidebarView: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Kriya App")
+        .accessibilityLabel("Tactura")
     }
 
     private var toggleButton: some View {
