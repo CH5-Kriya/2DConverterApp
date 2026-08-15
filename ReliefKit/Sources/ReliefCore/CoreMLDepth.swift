@@ -52,20 +52,6 @@ public final class CoreMLDepthBackend: DepthBackend {
     }
 
     /// Locate the compiled model and the position-embedding grid in a bundle.
-    ///
-    /// Returns `nil` when the artefacts are missing *or* when this runtime
-    /// cannot actually run them, so the caller's `?? ClassicalLayersBackend`
-    /// covers both. The second case is not hypothetical: the iOS Simulator's
-    /// Core ML does not implement multifunction models, and refuses one with
-    /// "`functionName` must be `nil` unless the model type is ML Program" —
-    /// a message the model's own metadata contradicts, since it declares
-    /// `MLModelType_mlProgram` and fifteen functions. The same compiled
-    /// `.mlmodelc` loads on macOS and on device.
-    ///
-    /// Without this check, adding the model *breaks* the Simulator: before it
-    /// was present the app ran on the heuristic backend, after it the whole
-    /// conversion fails. Degrading is the lesser harm, so long as it is said
-    /// out loud — see `DepthBackend.name`, which the workspace displays.
     public static func bundled(in bundle: Bundle = .main) -> CoreMLDepthBackend? {
         guard let model = bundle.url(forResource: "dav2_large_multifunction_f16",
                                      withExtension: "mlmodelc")
@@ -74,29 +60,7 @@ public final class CoreMLDepthBackend: DepthBackend {
               let grid = bundle.url(forResource: "base_1x1370x1024",
                                     withExtension: "f32"),
               let pe = PositionEmbedding(contentsOf: grid) else { return nil }
-
-        let backend = CoreMLDepthBackend(modelURL: model, positionEmbedding: pe)
-        guard backend.runtimeSupportsMultifunction() else { return nil }
-        return backend
-    }
-
-    /// Whether this runtime will hand back a model when asked for one of the
-    /// shape functions. Answered once per process: the probe loads real weights,
-    /// and paying that on every conversion would be worse than the problem.
-    private static var runtimeVerdict: Bool?
-
-    private func runtimeSupportsMultifunction() -> Bool {
-        if let known = Self.runtimeVerdict { return known }
-        do {
-            _ = try model(for: Self.functionName(height: 518, width: 518))
-            unload()                       // the probe should not hold 640 MB
-            Self.runtimeVerdict = true
-        } catch {
-            print("[depth] Core ML unavailable here, falling back to the "
-                  + "heuristic backend: \(error.localizedDescription)")
-            Self.runtimeVerdict = false
-        }
-        return Self.runtimeVerdict ?? false
+        return CoreMLDepthBackend(modelURL: model, positionEmbedding: pe)
     }
 
     static func functionName(height: Int, width: Int) -> String { "s\(height)x\(width)" }
