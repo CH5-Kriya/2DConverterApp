@@ -29,7 +29,7 @@ struct CreateProjectDialog: View {
         .onChange(of: model.createdProject) { _, project in
             guard let project else { return }
             appState.isPresentingNewProject = false
-            appState.open(.project(project.id), in: .myScans)
+            appState.open(.crop(project.id), in: .myScans)
             model.clearCreatedProject()
         }
         .alert("Import failed", isPresented: $model.hasError) {

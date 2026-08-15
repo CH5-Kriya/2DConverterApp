@@ -38,6 +38,11 @@ enum AppRoute: String, CaseIterable, Identifiable, Hashable {
 
 /// Pages pushed on top of a sidebar route.
 enum AppDestination: Hashable {
+    /// Between importing a photograph and converting it. Cropping earns its
+    /// place here because the pipeline resamples to `work_res` on the long
+    /// edge — pixels spent on a frame or a wall are detail the relief never
+    /// receives, and no later step can buy them back.
+    case crop(UUID)
     case project(UUID)
 }
 

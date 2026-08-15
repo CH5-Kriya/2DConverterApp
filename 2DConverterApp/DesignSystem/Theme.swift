@@ -17,10 +17,11 @@ enum Theme {
         static let accentFill = Color(hex: 0xF5F5F5)
         static let onAccent = Color(hex: 0x0A0A0A)
 
-        /// The one saturated colour in the palette, reserved for committing to
-        /// something — exporting, and the progress of an export. Everything
-        /// else in this app is greyscale on purpose, so a blue button reads as
-        /// "this is the action" without any other emphasis.
+        /// The one saturated colour in the palette, reserved for moving forward
+        /// — Continue on the crop screen, Export at the end, and the progress
+        /// of an export. Everything else in this app is greyscale on purpose,
+        /// so a blue button reads as "this is the action" without any other
+        /// emphasis.
         ///
         /// The workspace's Export button uses this too. Figma declares the
         /// style as Main-Blue #0078FD, which is a shade off this one; keeping a
