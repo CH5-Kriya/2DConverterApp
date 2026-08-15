@@ -214,7 +214,7 @@ final class ProjectDetailViewModel {
                                             cols: result.previewCols)
             previewMesh = await service.previewMesh(height: result.height,
                                                     config: config)
-            summary = "\(result.routeMode) · \(result.regionCount) regions"
+            summary = "\(result.routeMode) · \(result.regionCount) regions · depth \(result.depthBackend)"
             stage = .ready
             await setStatus(.ready)
         } catch is CancellationError {

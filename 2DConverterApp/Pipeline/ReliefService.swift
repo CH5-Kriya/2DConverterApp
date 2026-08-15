@@ -19,6 +19,9 @@ actor ReliefService {
         let previewCols: Int
         let regionCount: Int
         let routeMode: String
+        /// Which depth backend actually ran. Surfaced so a run on the
+        /// heuristic fallback never passes for a neural one.
+        let depthBackend: String
     }
 
     enum Failure: LocalizedError {
@@ -68,7 +71,8 @@ actor ReliefService {
                       previewRows: volume.height.rows,
                       previewCols: volume.height.cols,
                       regionCount: analysis.regionCount,
-                      routeMode: analysis.routing.mode)
+                      routeMode: analysis.routing.mode,
+                      depthBackend: pipeline.depthBackend.name)
     }
 
     /// Re-blend with new slider values. Cheap: the four Z_* layers are already
