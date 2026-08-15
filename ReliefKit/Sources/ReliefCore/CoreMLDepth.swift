@@ -79,8 +79,21 @@ public final class CoreMLDepthBackend: DepthBackend {
     private func model(for name: String) throws -> MLModel {
         if let cached = cache[name] { return cached }
         let config = MLModelConfiguration()
-        config.computeUnits = .all          // let the runtime place it; static
-        config.functionName = name          // shapes are what keep it on the ANE
+        // The simulator has no ANE, and its Metal backend fails validation on
+        // this model -- "MpsGraph backend validation on incompatible OS". Core
+        // ML then falls back to a loader that does not understand multifunction
+        // and reports it as "`functionName` must be `nil` unless the model type
+        // is ML Program", which is misleading: the model *is* an ML Program, the
+        // GPU path just never got far enough to see it. Excluding the GPU keeps
+        // the multifunction loader in play, so the simulator runs on the CPU.
+        #if targetEnvironment(simulator)
+        config.computeUnits = .cpuOnly
+        #else
+        // On device, let the runtime place it; static shapes are what keep it
+        // on the ANE.
+        config.computeUnits = .all
+        #endif
+        config.functionName = name
         let loaded = try MLModel(contentsOf: try compiledURL(), configuration: config)
         cache[name] = loaded
         return loaded
