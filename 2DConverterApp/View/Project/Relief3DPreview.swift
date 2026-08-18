@@ -16,6 +16,11 @@ struct Relief3DPreview: View {
 
     @State private var stage = ReliefStage()
 
+    /// Sticky rather than per-visit: whether the floor helps or gets in the way
+    /// is a standing preference about how someone reads a relief, not a
+    /// decision they want to retake every time they open a project.
+    @AppStorage("relief3DShowsGrid") private var showsGrid = true
+
     var body: some View {
         GeometryReader { proxy in
             RealityView { content in
@@ -39,9 +44,12 @@ struct Relief3DPreview: View {
                       initial: true) { _, framing in
                 stage.frame(framing)
             }
+            .onChange(of: showsGrid, initial: true) { _, shows in
+                stage.showsGrid = shows
+            }
         }
         .overlay(alignment: .topLeading) { readout }
-        .overlay(alignment: .topTrailing) { resetButton }
+        .overlay(alignment: .topTrailing) { controls }
         .accessibilityLabel("3D preview")
         .accessibilityHint("Drag to orbit the model, pinch to zoom.")
     }
@@ -49,9 +57,7 @@ struct Relief3DPreview: View {
     @ViewBuilder
     private var readout: some View {
         if let mesh {
-            Text(String(format: "%.0f × %.0f × %.1f mm · %@ triangles",
-                        mesh.widthMm, mesh.heightMm, mesh.thicknessMm,
-                        Self.count.string(from: mesh.triangleCount as NSNumber) ?? "—"))
+            Text(caption(for: mesh))
                 .font(.system(size: 12, weight: .regular))
                 .monospacedDigit()
                 .foregroundStyle(Theme.Palette.textSecondary)
@@ -63,21 +69,47 @@ struct Relief3DPreview: View {
         }
     }
 
+    /// The grid's cell size belongs here rather than on the grid itself: a
+    /// floating label in the scene would have to fight the model for space and
+    /// track the camera, and the readout is already where sizes are stated.
+    private func caption(for mesh: ReliefPreviewMesh) -> String {
+        var text = String(format: "%.0f × %.0f × %.1f mm · %@ triangles",
+                          mesh.widthMm, mesh.heightMm, mesh.thicknessMm,
+                          Self.count.string(from: mesh.triangleCount as NSNumber) ?? "—")
+        if showsGrid, let spacing = stage.gridSpacingMm {
+            text += String(format: " · %g mm grid", spacing)
+        }
+        return text
+    }
+
     @ViewBuilder
-    private var resetButton: some View {
+    private var controls: some View {
         if mesh != nil {
-            Button {
-                stage.resetView()
-            } label: {
-                Image(systemName: "arrow.counterclockwise")
-                    .font(.system(size: 15, weight: .medium))
+            HStack(spacing: 8) {
+                Button {
+                    showsGrid.toggle()
+                } label: {
+                    Image(systemName: "square.grid.3x3")
+                        .font(.system(size: 15, weight: .medium))
+                }
+                .foregroundStyle(showsGrid ? Theme.Palette.workspaceLabel
+                                           : Theme.Palette.textTertiary)
+                .accessibilityLabel("Grid")
+                .accessibilityValue(showsGrid ? "On" : "Off")
+
+                Button {
+                    stage.resetView()
+                } label: {
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.system(size: 15, weight: .medium))
+                }
+                .foregroundStyle(Theme.Palette.workspaceLabel)
+                .accessibilityLabel("Reset view")
             }
             .buttonStyle(.bordered)
             .buttonBorderShape(.circle)
             .tint(Theme.Palette.workspaceControl)
-            .foregroundStyle(Theme.Palette.workspaceLabel)
             .padding(16)
-            .accessibilityLabel("Reset view")
         }
     }
 
@@ -109,6 +141,17 @@ final class ReliefStage {
 
     let root = Entity()
     let model = ModelEntity()
+
+    /// A container rather than the grid itself, so hiding the floor and
+    /// swapping it for a new plate's are independent of each other.
+    private let floor = Entity()
+
+    /// Cell size of the floor currently under the model, in millimetres.
+    private(set) var gridSpacingMm: Double?
+
+    var showsGrid = true {
+        didSet { floor.isEnabled = showsGrid }
+    }
 
     /// Bumped to force `RealityView` to be re-created; see `resetView()`.
     private(set) var generation = 0
@@ -145,6 +188,7 @@ final class ReliefStage {
         camera.look(at: .zero, from: Self.homeDirection * distance, relativeTo: nil)
 
         root.addChild(model)
+        root.addChild(floor)
         root.addChild(camera)
         addLights()
     }
@@ -163,6 +207,20 @@ final class ReliefStage {
               !Task.isCancelled else { return }
         model.model = ModelComponent(mesh: resource, materials: [material])
         loaded = snapshot.id
+        await layFloor(under: snapshot)
+    }
+
+    /// The floor is rebuilt with the mesh rather than made once at setup: its
+    /// cell size comes from the plate's millimetre dimensions and its height
+    /// from the plate's underside, so a config edit that resizes the plate has
+    /// to resize the ruler beneath it too.
+    private func layFloor(under snapshot: ReliefPreviewMesh) async {
+        let grid = await ReliefGrid.build(for: snapshot)
+        guard !Task.isCancelled else { return }
+
+        floor.children.removeAll()
+        if let grid { floor.addChild(grid.entity) }
+        gridSpacingMm = grid?.spacingMm
     }
 
     /// Stands the camera back far enough that the plate fits the viewport.
