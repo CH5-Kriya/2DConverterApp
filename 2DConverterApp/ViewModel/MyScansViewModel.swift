@@ -5,6 +5,7 @@ import SwiftUI
 final class MyScansViewModel {
 
     private let projects: ProjectRepository
+    private let workspaces: ProjectWorkspaceStore
 
     private(set) var items: [Project] = []
     private(set) var isLoading = false
@@ -13,8 +14,9 @@ final class MyScansViewModel {
     /// view never has to know that a search is a predicate over the model.
     var query: String = ""
 
-    init(projects: ProjectRepository) {
-        self.projects = projects
+    init(dependencies: AppDependencies) {
+        self.projects = dependencies.projects
+        self.workspaces = dependencies.workspaces
     }
 
     /// `localizedStandardContains` rather than `contains`: it is
@@ -43,6 +45,9 @@ final class MyScansViewModel {
     }
 
     func delete(_ project: Project) async {
+        // Before the files go, so a live workspace cannot go on writing
+        // settings and checkpoints into a directory that has been removed.
+        workspaces.discard(project.id)
         await projects.delete(id: project.id)
         await load()
     }

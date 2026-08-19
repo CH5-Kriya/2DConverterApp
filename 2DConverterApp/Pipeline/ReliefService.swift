@@ -9,19 +9,12 @@ import ReliefCore
 /// — would run on the UI thread and freeze the app.
 actor ReliefService {
 
-    /// A finished conversion, held in memory for the tuner.
-    struct Output {
-        let analysis: Analysis
-        let volume: VolumeResult
+    /// A finished conversion: the checkpoint the tuner goes on working from,
+    /// and the first surface blended out of it.
+    struct Conversion {
+        let checkpoint: ReliefCheckpoint
         let height: Plane
-        let previewShaded: [Float]
-        let previewRows: Int
-        let previewCols: Int
-        let regionCount: Int
-        let routeMode: String
-        /// Which depth backend actually ran. Surfaced so a run on the
-        /// heuristic fallback never passes for a neural one.
-        let depthBackend: String
+        let shaded: [Float]
     }
 
     enum Failure: LocalizedError {
@@ -36,12 +29,12 @@ actor ReliefService {
         }
     }
 
-    /// Stages 1–5. The expensive half; its result is cached so the sliders can
-    /// re-run only the blend.
+    /// Stages 1–5. The expensive half; its result is checkpointed so the
+    /// sliders — and every later visit to the project — re-run only the blend.
     func convert(imageData: Data,
                  config: ReliefConfig,
                  progress: @Sendable @escaping (PipelinePhase, Double) -> Void)
-        async throws -> Output {
+        async throws -> Conversion {
 
         guard let rgb = ReliefImage.load(data: imageData,
                                          maxEdge: config.preprocess.workRes) else {
@@ -65,30 +58,48 @@ actor ReliefService {
         let volume = pipeline.buildVolume(analysis, progress: progress)
         try Task.checkCancellation()
 
-        let shaded = ReliefImage.shade(volume.height)
-        return Output(analysis: analysis, volume: volume, height: volume.height,
-                      previewShaded: shaded,
-                      previewRows: volume.height.rows,
-                      previewCols: volume.height.cols,
-                      regionCount: analysis.regionCount,
-                      routeMode: analysis.routing.mode,
-                      depthBackend: pipeline.depthBackend.name)
+        let checkpoint = ReliefCheckpoint(
+            labels: analysis.labels,
+            regionCount: analysis.regionCount,
+            mask: Volume.foreground(depth: analysis.corrected),
+            zAi: volume.zAi, zRough: volume.zRough,
+            zMain: volume.zMain, zDetail: volume.zDetail,
+            routeMode: analysis.routing.mode,
+            depthBackend: pipeline.depthBackend.name)
+
+        // `analysis` goes out of scope here, and with it the working image, its
+        // Lab, the lightness and brightness fields and the raw depth — some
+        // eighty megabytes at `work_res` that nothing downstream of the blend
+        // ever reads again.
+        return Conversion(checkpoint: checkpoint,
+                          height: volume.height,
+                          shaded: ReliefImage.shade(volume.height))
     }
 
     /// Re-blend with new slider values. Cheap: the four Z_* layers are already
     /// computed, so this is a weighted sum plus the ordering pass.
-    func reblend(_ output: Output, config: ReliefConfig) -> (Plane, [Float]) {
+    func reblend(_ checkpoint: ReliefCheckpoint, config: ReliefConfig) -> (Plane, [Float]) {
         let pipeline = ReliefPipeline(config: config)
-        let mask = Volume.foreground(depth: output.analysis.corrected)
-        let height = pipeline.blend(zAi: output.volume.zAi,
-                                    zRough: output.volume.zRough,
-                                    zMain: output.volume.zMain,
-                                    zDetail: output.volume.zDetail,
-                                    labels: output.analysis.labels,
-                                    regionCount: output.analysis.regionCount,
-                                    mask: mask,
+        let height = pipeline.blend(zAi: checkpoint.zAi,
+                                    zRough: checkpoint.zRough,
+                                    zMain: checkpoint.zMain,
+                                    zDetail: checkpoint.zDetail,
+                                    labels: checkpoint.labels,
+                                    regionCount: checkpoint.regionCount,
+                                    mask: checkpoint.mask,
                                     config: config.volume)
         return (height, ReliefImage.shade(height))
+    }
+
+    /// Both directions of the checkpoint file, here rather than at the call
+    /// site so that quantising twenty megabytes never happens on the main
+    /// thread — which is the whole reason this type is an actor.
+    func encode(_ checkpoint: ReliefCheckpoint) -> Data {
+        checkpoint.encoded()
+    }
+
+    func decodeCheckpoint(_ data: Data) -> ReliefCheckpoint? {
+        ReliefCheckpoint.decode(data)
     }
 
     /// The height field closed into a solid for the on-screen 3D preview.

@@ -11,12 +11,11 @@ struct ProjectDetailView: View {
     @State private var isRenaming = false
     @State private var draftName = ""
 
+    /// The workspace comes from the store rather than being built here: this
+    /// view is recreated on every push, and a workspace built with it would
+    /// arrive with no checkpoint and no conversion in flight.
     init(projectID: UUID, dependencies: AppDependencies) {
-        _model = State(initialValue: ProjectDetailViewModel(
-            projectID: projectID,
-            projects: dependencies.projects,
-            relief: dependencies.relief
-        ))
+        _model = State(initialValue: dependencies.workspaces.workspace(for: projectID))
     }
 
     var body: some View {
@@ -43,8 +42,10 @@ struct ProjectDetailView: View {
                             preview: model.preview,
                             height: height,
                             config: model.currentConfig(),
-                            relief: model.relief)
-                    .presentationBackground(.clear)
+                            relief: model.relief) {
+                    Task { await model.markExported() }
+                }
+                .presentationBackground(.clear)
             }
         }
     }
@@ -116,12 +117,21 @@ struct ProjectDetailView: View {
     @ViewBuilder
     private var viewport: some View {
         switch model.stage {
+        // A workspace outlives the screen now, so a failure that used to be
+        // retried by walking out and back in would otherwise stick for the rest
+        // of the session. The way back has to be on the screen.
         case .failed(let message):
-            EmptyStateView(systemImage: "exclamationmark.triangle",
-                           title: "Conversion failed",
-                           message: message)
+            VStack(spacing: 20) {
+                EmptyStateView(systemImage: "exclamationmark.triangle",
+                               title: "Conversion failed",
+                               message: message)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Try again") { model.convert() }
+                    .buttonStyle(.workspaceChip)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-        case .idle where model.project?.sourceImageData == nil:
+        case .idle where model.project?.hasSourceImage == false:
             EmptyStateView(systemImage: "photo.badge.plus",
                            title: "No source image",
                            message: "This project has no photo to convert.")
@@ -134,6 +144,97 @@ struct ProjectDetailView: View {
         case .idle, .ready:
             Relief3DPreview(mesh: model.previewMesh)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .overlay { refining }
+                .overlay(alignment: .bottom) { saveBadge }
+                .animation(.easeOut(duration: 0.18), value: model.refiningLabel)
+                .animation(.easeOut(duration: 0.18), value: model.saveState)
+        }
+    }
+
+    /// A slider move re-blends at `work_res` and rebuilds the preview mesh,
+    /// which is a second or two of work. Without this the relief simply
+    /// changed under the person's hand with no sign the app was still on it.
+    ///
+    /// The veil is doing two jobs. It says the app is still working, and it
+    /// puts the stale surface out of reach — what is on screen during a
+    /// re-blend answers to the *previous* slider positions, so inviting someone
+    /// to orbit and judge it is inviting them to judge the wrong shape.
+    ///
+    /// Indeterminate rather than a fraction: the blend reports no progress of
+    /// its own, and a bar that crawls to a number the pipeline never sent is a
+    /// lie told smoothly.
+    @ViewBuilder
+    private var refining: some View {
+        if let label = model.refiningLabel {
+            ZStack {
+                // Material rather than `.blur` on the preview itself. Putting a
+                // filter on a RealityView forces its Metal layer through an
+                // offscreen pass, and this screen already has a documented
+                // history of exhausting the drawable pool that way — see
+                // `ReliefStage.frame(_:)`. A backdrop reads the composited
+                // result instead and costs the preview nothing.
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                    .overlay(Theme.Palette.canvas.opacity(0.45))
+
+                VStack(spacing: 14) {
+                    Text(label)
+                        .font(Theme.Typography.caption)
+                        .foregroundStyle(Theme.Palette.textSecondary)
+                    IndeterminateBar()
+                    autosaveNote
+                }
+                .padding(28)
+                .background(Theme.Palette.workspacePanel.opacity(0.86),
+                            in: RoundedRectangle(cornerRadius: Theme.Metrics.workspacePanelRadius,
+                                                 style: .continuous))
+            }
+            .transition(.opacity)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(label). Updating the preview. \(model.saveState.note)")
+        }
+    }
+
+    /// Inside the card rather than as a badge of its own, because during a
+    /// re-blend the two facts belong together: the preview is catching up, and
+    /// the setting that changed it is already on disk.
+    private var autosaveNote: some View {
+        Label {
+            Text(model.saveState.note)
+        } icon: {
+            Image(systemName: model.saveState == .saving
+                  ? "arrow.triangle.2.circlepath"
+                  : "checkmark.circle.fill")
+        }
+        .font(.system(size: 12))
+        .foregroundStyle(Theme.Palette.textTertiary)
+        .padding(.top, 2)
+    }
+
+    /// The same reassurance when there is no card to put it in — after a
+    /// conversion, whose checkpoint is the largest thing the app writes, and
+    /// after an edit whose re-blend has already finished. Fades on its own:
+    /// a permanent "Saved" stops being information after the first time.
+    @ViewBuilder
+    private var saveBadge: some View {
+        if !model.isRefining, model.saveState != .idle {
+            Label {
+                Text(model.saveState == .saving ? "Saving" : "Saved")
+            } icon: {
+                Image(systemName: model.saveState == .saving
+                      ? "arrow.triangle.2.circlepath"
+                      : "checkmark.circle.fill")
+            }
+            .font(Theme.Typography.caption)
+            .foregroundStyle(Theme.Palette.textSecondary)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 12)
+            .background(Theme.Palette.workspacePanel.opacity(0.86),
+                        in: Capsule(style: .continuous))
+            .padding(.bottom, 20)
+            .transition(.opacity.combined(with: .offset(y: 10)))
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(model.saveState.note)
         }
     }
 
@@ -249,8 +350,11 @@ struct ProjectDetailView: View {
         VStack(spacing: 12) {
             Button("Export") { showingExport = true }
                 .buttonStyle(.tacturaAccent)
-                .disabled(!model.canRefine)
-                .opacity(model.canRefine ? 1 : 0.5)
+                // Disabled mid-refine, not merely discouraged: the height field
+                // on hand is still the previous edit's, and exporting it would
+                // write a file that does not match the preview.
+                .disabled(!model.canRefine || model.isRefining)
+                .opacity(model.canRefine && !model.isRefining ? 1 : 0.5)
 
             if let summary = model.summary {
                 Text(summary)
@@ -269,6 +373,41 @@ struct ProjectDetailView: View {
 
     private func binding(for control: ProjectDetailViewModel.Control) -> Binding<Double> {
         Binding { model.value(for: control) } set: { model.setValue($0, for: control) }
+    }
+}
+
+/// A bar that moves while something with no measurable progress is happening.
+///
+/// Not `ProgressView()`. Indeterminate is a spinner on iOS, and forcing
+/// `.progressViewStyle(.linear)` on it draws a track that never animates —
+/// three screenshots a second apart came back byte-identical. A still bar is
+/// worse than no bar: it reads as the app having stopped, which is the exact
+/// impression this overlay exists to prevent.
+private struct IndeterminateBar: View {
+    var width: CGFloat = 220
+    var height: CGFloat = 5
+
+    @State private var sliding = false
+
+    var body: some View {
+        Capsule(style: .continuous)
+            .fill(Theme.Palette.accentFill.opacity(0.16))
+            .frame(width: width, height: height)
+            .overlay(alignment: .leading) {
+                Capsule(style: .continuous)
+                    .fill(Theme.Palette.accentFill)
+                    .frame(width: width * 0.34)
+                    .offset(x: sliding ? width * 0.66 : 0)
+            }
+            .clipShape(Capsule(style: .continuous))
+            .onAppear {
+                withAnimation(.easeInOut(duration: 0.85).repeatForever(autoreverses: true)) {
+                    sliding = true
+                }
+            }
+            // The phase label above it already says what is happening; a second
+            // voice reading a bar with no value adds nothing.
+            .accessibilityHidden(true)
     }
 }
 

@@ -23,7 +23,7 @@ private struct ScanThumbnail: View {
         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
             .fill(Theme.Palette.surfaceSelected)
             .overlay {
-                if let data = project.sourceImageData, let image = UIImage(data: data) {
+                if let data = project.thumbnail, let image = UIImage(data: data) {
                     Image(uiImage: image)
                         .resizable()
                         .aspectRatio(contentMode: .fill)

@@ -6,6 +6,7 @@ import UIKit
 final class CropViewModel {
 
     private let projects: ProjectRepository
+    private let workspaces: ProjectWorkspaceStore
     private let projectID: UUID
 
     private(set) var project: Project?
@@ -18,9 +19,10 @@ final class CropViewModel {
         didSet { applyAspect() }
     }
 
-    init(projectID: UUID, projects: ProjectRepository) {
+    init(projectID: UUID, dependencies: AppDependencies) {
         self.projectID = projectID
-        self.projects = projects
+        self.projects = dependencies.projects
+        self.workspaces = dependencies.workspaces
     }
 
     // MARK: Derived
@@ -52,7 +54,8 @@ final class CropViewModel {
     func load() async {
         isLoading = true
         project = await projects.project(id: projectID)
-        if let data = project?.sourceImageData, let decoded = UIImage(data: data) {
+        if let data = await projects.sourceImage(id: projectID),
+           let decoded = UIImage(data: data) {
             image = decoded
         } else {
             errorMessage = "That image could not be read."
@@ -120,7 +123,14 @@ final class CropViewModel {
 
         if !isUntouched, let cropped = Self.crop(image, to: cropPixels),
            let data = cropped.jpegData(compressionQuality: 0.95) {
-            project.sourceImageData = data
+            await projects.setSourceImage(data, id: project.id)
+            // The store has retired the checkpoint; this retires the copy a
+            // workspace opened earlier in this session is still holding.
+            workspaces.discard(project.id)
+            // The lists show the artwork, and the artwork is now what is inside
+            // the frame — a thumbnail of the uncropped import would advertise
+            // exactly the pixels the person just decided to throw away.
+            project.thumbnail = ProjectThumbnail.make(from: data)
             await projects.save(project)
         }
         return project.id

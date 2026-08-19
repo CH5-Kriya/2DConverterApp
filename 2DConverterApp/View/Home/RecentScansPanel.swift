@@ -90,7 +90,7 @@ private struct RecentScanRow: View {
             .fill(Theme.Palette.surfaceSelected)
             .frame(width: 72, height: 72)
             .overlay {
-                if let data = project.sourceImageData, let image = UIImage(data: data) {
+                if let data = project.thumbnail, let image = UIImage(data: data) {
                     Image(uiImage: image)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
