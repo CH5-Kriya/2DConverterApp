@@ -55,7 +55,7 @@ private struct FirstRunHome: View {
                 .minimumScaleFactor(0.7)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text("Scan any 2D image and bring it to life in 3D\nFast, simple, powerful")
+            Text("Scan any 2D image and bring it to life in 2.5D\nFast, simple, powerful")
                 .font(Theme.Typography.body)
                 .foregroundStyle(Theme.Palette.textSecondary)
                 .lineSpacing(4)
@@ -94,7 +94,7 @@ private struct ReturningHome: View {
                 .font(Theme.Typography.largeTitle)
                 .foregroundStyle(Theme.Palette.textPrimary)
 
-            Text("Ready to turn your 2D into 3D again?")
+            Text("Ready to turn your 2D into 2.5D again?")
                 .font(Theme.Typography.body)
                 .foregroundStyle(Theme.Palette.textSecondary)
                 .padding(.top, 10)

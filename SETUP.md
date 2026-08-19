@@ -190,7 +190,7 @@ Edit them to your own paths, and note they also expect the Python repo's
 | `Depth model not found at …` | Only reachable via the direct `CoreMLDepthBackend(modelURL:)` path, e.g. the SlicProbe tools. The app never raises it. |
 | `not a valid .mlmodelc file` | A hand-placed `.mlpackage` that Core ML has not compiled. The backend compiles it once at runtime and caches; if this persists the package directory is malformed. |
 | ``'MLModelConfiguration'`s `.functionName` property must be `nil` unless the model type is ML Program`` | Simulator only, and the message is misleading — the model *is* an ML Program. See "Core ML on the simulator" below. |
-| `No depth function for a HxW input` | The image's aspect bucket has no matching function. Supported long sides: 518, 616, 644, 728, 742, 784, 868, 1008. |
+| `This crop is too long and narrow to convert` | The crop is wider than 2:1 (or taller than 1:2). The package carries a function for every multiple of 14 from 518 to 1036 with the short side at 518, which covers every aspect from square to 2:1; past that it raises rather than squashing the image to fit. |
 | Signing errors on build | Step 4. |
 | Simulator build fails to link | Intel Mac. There is no x86_64 slice. |
 | Depth is unusably slow | Running on the simulator, which has no Neural Engine. Use a physical iPad. |

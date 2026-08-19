@@ -24,10 +24,30 @@ public final class CoreMLDepthBackend: DepthBackend {
     private var cache: [String: MLModel] = [:]
     private var compiled: URL?
 
-    /// Aspect buckets the package was built with. An image whose short side
-    /// scales to a long side outside this list has no matching function and is
-    /// handled explicitly rather than silently snapped to a wrong one.
-    public static let longSides = [518, 616, 644, 728, 742, 784, 868, 1008]
+    /// Aspect buckets the package was built with: every multiple of 14 from
+    /// 518 (square) through 1036 (2:1), in both orientations.
+    ///
+    /// It used to be eight hand-picked values, taken from the aspect ratios in
+    /// the reference's sample set. Each function covers an aspect window only
+    /// ±7/518 — ±1.4% — wide, so eight of them left roughly 83% of real crops
+    /// with no function at all. 4:3 was among the gaps, which is what every
+    /// camera shoots, so scanning could essentially never convert. Filling the
+    /// ladder in costs a program per shape rather than another copy of ViT-L.
+    public static let longSides = Array(stride(from: 518, through: 1036, by: 14))
+
+    static let shortSide = 518
+
+    /// Whether a function exists for this exact tensor.
+    ///
+    /// Checking only the long side is not enough. `DPTImageProcessor` picks
+    /// whichever scale is *closer to 1*, and for a sufficiently elongated image
+    /// that is the long side's — a 2000×100 strip resolves to 518×28, whose long
+    /// side is a supported 518 while the pair is not a function at all. So both
+    /// sides are checked: one must be exactly 518, the other on the ladder.
+    static func isSupported(height: Int, width: Int) -> Bool {
+        Swift.min(height, width) == shortSide
+            && longSides.contains(Swift.max(height, width))
+    }
 
     public enum Failure: LocalizedError {
         case modelMissing(URL)
@@ -39,7 +59,11 @@ public final class CoreMLDepthBackend: DepthBackend {
             case .modelMissing(let url):
                 return "Depth model not found at \(url.lastPathComponent)."
             case .unsupportedShape(let h, let w):
-                return "No depth function for a \(h)x\(w) input."
+                // Named in terms of the crop, because that is the thing the
+                // person can act on. The tensor size is along for diagnosis.
+                return "This crop is too long and narrow to convert. "
+                     + "Crop it to 2:1 or closer to square and try again. "
+                     + "(\(h)x\(w) input has no depth function.)"
             case .badOutput:
                 return "The depth model returned an unexpected result."
             }
@@ -106,8 +130,7 @@ public final class CoreMLDepthBackend: DepthBackend {
     public func predict(rgb: Plane, lab: Plane) throws -> DepthResult {
         let size = PositionEmbedding.processorSize(imageHeight: rgb.rows,
                                                    imageWidth: rgb.cols)
-        let long = Swift.max(size.height, size.width)
-        guard Self.longSides.contains(long) else {
+        guard Self.isSupported(height: size.height, width: size.width) else {
             throw Failure.unsupportedShape(height: size.height, width: size.width)
         }
 
