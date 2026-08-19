@@ -11,6 +11,9 @@ struct ExportSheet: View {
     let preview: CGImage?
     let height: Plane
     let config: ReliefConfig
+    /// Reported back so the project can record that it has been exported. The
+    /// sheet owns the write and knows when it landed; nothing else does.
+    let onExported: () -> Void
 
     @State private var model: ExportViewModel
     @State private var pickingFolder = false
@@ -19,10 +22,12 @@ struct ExportSheet: View {
          preview: CGImage?,
          height: Plane,
          config: ReliefConfig,
-         relief: ReliefService) {
+         relief: ReliefService,
+         onExported: @escaping () -> Void = {}) {
         self.preview = preview
         self.height = height
         self.config = config
+        self.onExported = onExported
         _model = State(initialValue: ExportViewModel(projectName: projectName,
                                                      relief: relief))
     }
@@ -48,7 +53,10 @@ struct ExportSheet: View {
             model.setDestination(result.map { $0 })
         }
         .onChange(of: model.stage) { _, stage in
-            if case .finished = stage { dismiss() }
+            if case .finished = stage {
+                onExported()
+                dismiss()
+            }
         }
     }
 

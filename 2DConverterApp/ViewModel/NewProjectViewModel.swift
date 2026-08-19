@@ -23,6 +23,9 @@ final class NewProjectViewModel {
         self.projects = projects
     }
 
+    /// The import is the first checkpoint. By the time this returns, the photo
+    /// and a project to hang it on are on disk — closing the app on the crop
+    /// screen loses the crop, never the artwork.
     func importPick() async {
         guard let pickedItem else { return }
         isImporting = true
@@ -39,10 +42,11 @@ final class NewProjectViewModel {
             let project = Project(
                 name: Self.defaultName(),
                 status: .draft,
-                sourceImageData: data
+                thumbnail: ProjectThumbnail.make(from: data)
             )
             await projects.save(project)
-            createdProject = project
+            await projects.setSourceImage(data, id: project.id)
+            createdProject = await projects.project(id: project.id)
         } catch {
             errorMessage = error.localizedDescription
         }

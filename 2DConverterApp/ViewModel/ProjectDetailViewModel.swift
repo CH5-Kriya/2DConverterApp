@@ -6,7 +6,7 @@ import ReliefCore
 final class ProjectDetailViewModel {
 
     private let projects: ProjectRepository
-    private let projectID: UUID
+    let projectID: UUID
     let relief: ReliefService
 
     private(set) var project: Project?
@@ -29,49 +29,30 @@ final class ProjectDetailViewModel {
     private(set) var previewMesh: ReliefPreviewMesh?
     private(set) var summary: String?
 
-    private var output: ReliefService.Output?
+    /// Stages 1–5, either just computed or read back off disk. Everything the
+    /// sliders touch hangs off this; `nil` means there is nothing to tune yet.
+    private var checkpoint: ReliefCheckpoint?
+
     /// Exposed so the export sheet can build the solid from the exact
     /// field on screen rather than re-deriving one.
     private(set) var height: Plane?
+
+    /// Owned here rather than by the view's `.task`, which is the point: a
+    /// SwiftUI task is cancelled the moment its view goes away, so a conversion
+    /// started that way died on the walk back to Home and began again on the
+    /// walk in. These outlive the screen.
     private var task: Task<Void, Never>?
+    private var refineTask: Task<Void, Never>?
+
+    /// Whether `load()` has already decided what this project needs. A second
+    /// visit re-reads the record and stops there.
+    private var hasStarted = false
 
     // MARK: Parameters
 
-    /// A named starting point for the four sliders. "Details" is the pipeline's
-    /// own default tuning; "Simple" trades surface detail for a shape that
-    /// prints cleanly at a coarse layer height.
-    enum Preset: String, CaseIterable, Identifiable {
-        case simple = "Simple"
-        case details = "Details"
-
-        var id: Self { self }
-
-        var settings: Settings {
-            switch self {
-            case .simple:
-                Settings(preset: .simple, depth: 0.5, smoothness: 0.8,
-                         texture: 0.25, outline: 0.6)
-            case .details:
-                Settings(preset: .details, depth: Sliders.depthDefault,
-                         smoothness: Sliders.smoothDefault,
-                         texture: Sliders.textureDefault,
-                         outline: Sliders.outlineDefault)
-            }
-        }
-    }
-
-    /// The four sliders, all normalised 0–1, plus the preset they came from.
-    ///
-    /// Every one of them lives in the cheap half of the pipeline, so moving one
-    /// re-blends cached layers instead of re-running the solver. Grouping them
-    /// into one value is what makes undo a matter of swapping a struct.
-    struct Settings: Equatable {
-        var preset: Preset = .details
-        var depth: Double = Sliders.depthDefault      // mesh.relief_mm
-        var smoothness: Double = Sliders.smoothDefault // lambda_rough vs lambda_main
-        var texture: Double = Sliders.textureDefault   // lambda_detail
-        var outline: Double = Sliders.outlineDefault   // ordering_strength
-    }
+    typealias Preset = ReliefPreset
+    typealias Settings = ReliefSettings
+    typealias Sliders = ReliefSliders
 
     /// One of the four sliders. An enum rather than an index into a label
     /// array: the array and the bindings can drift apart, this can't.
@@ -92,7 +73,66 @@ final class ProjectDetailViewModel {
     var texture: Double { settings.texture }
     var outline: Double { settings.outline }
 
-    var canRefine: Bool { output != nil }
+    var canRefine: Bool { checkpoint != nil }
+
+    /// What a slider move is doing right now, or `nil` when the surface on
+    /// screen is the surface the sliders describe. Drives the progress bar over
+    /// the preview: a re-blend at `work_res` takes long enough that without one
+    /// the model looks like it flickered rather than updated.
+    private(set) var refiningLabel: String?
+
+    var isRefining: Bool { refiningLabel != nil }
+
+    // MARK: Autosave
+
+    /// Whether a write is in flight, just landed, or is old news.
+    ///
+    /// Nothing in this workspace has a Save button — the import, the checkpoint
+    /// and every committed slider move are written as they happen. That is only
+    /// reassuring if it is visible, so the writes report themselves rather than
+    /// being silent and asking to be trusted.
+    enum SaveState: Equatable {
+        case idle
+        case saving
+        case saved
+
+        /// One sentence, spelled once. The card, the badge and VoiceOver all
+        /// read from here so none of them can start saying something the
+        /// others do not.
+        var note: String {
+            switch self {
+            case .saving: "Saving your changes"
+            case .idle, .saved: "Changes saved automatically"
+            }
+        }
+    }
+
+    private(set) var saveState: SaveState = .idle
+
+    /// Retires the "Saved" badge a couple of seconds after it appears. Held so
+    /// a second write can cancel it rather than have its own badge cut short by
+    /// the previous one's timer.
+    private var saveBadgeTask: Task<Void, Never>?
+
+    private func beginSave() {
+        saveBadgeTask?.cancel()
+        saveState = .saving
+    }
+
+    private func endSave() {
+        saveBadgeTask?.cancel()
+        saveState = .saved
+        saveBadgeTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled else { return }
+            self?.retireSaveBadge()
+        }
+    }
+
+    private func retireSaveBadge() {
+        guard saveState == .saved else { return }
+        saveState = .idle
+    }
 
     func value(for control: Control) -> Double {
         switch control {
@@ -171,12 +211,28 @@ final class ProjectDetailViewModel {
         refine()
     }
 
+    // MARK: - Loading
+
+    /// Picks up where the project was left, which is one of three places: a
+    /// checkpoint on disk, an import that has never been converted, or — for a
+    /// workspace this screen has already opened once — exactly where it is.
     func load() async {
-        isLoading = true
         project = await projects.project(id: projectID)
         isLoading = false
-        if project?.sourceImageData != nil && stage == .idle {
-            await convert()
+
+        guard !hasStarted else { return }
+        hasStarted = true
+
+        if let saved = project?.settings {
+            settings = saved
+            history = [saved]
+            historyIndex = 0
+        }
+
+        if project?.hasCheckpoint == true {
+            restore()
+        } else if project?.hasSourceImage == true {
+            convert()
         }
     }
 
@@ -184,39 +240,52 @@ final class ProjectDetailViewModel {
         guard var project else { return }
         project.name = name
         await projects.save(project)
-        await load()
+        self.project = await projects.project(id: projectID)
+    }
+
+    /// The export sheet reports back through here. Exporting is a milestone,
+    /// not a closing: the checkpoint stays, and so does everything that lets
+    /// the project be retuned and written again.
+    func markExported() async {
+        await setStatus(.exported)
     }
 
     // MARK: - Running the pipeline
 
-    func convert() async {
-        guard let data = project?.sourceImageData else { return }
+    func convert() {
         task?.cancel()
-
-        await setStatus(.analyzing)
         stage = .converting(label: PipelinePhase.preprocess.label, fraction: 0)
-
         let config = currentConfig()
-        let service = relief
+        task = Task { [weak self] in await self?.runConversion(config) }
+    }
+
+    private func runConversion(_ config: ReliefConfig) async {
+        guard let data = await projects.sourceImage(id: projectID) else {
+            stage = .failed("This project has no photo to convert.")
+            await setStatus(.failed)
+            return
+        }
+        await setStatus(.analyzing)
 
         do {
-            let result = try await service.convert(
+            let conversion = try await relief.convert(
                 imageData: data, config: config,
                 progress: { [weak self] phase, done in
-                    Task { @MainActor in
+                    Task { @MainActor [weak self] in
                         self?.stage = .converting(label: phase.label, fraction: done)
                     }
                 })
-            output = result
-            height = result.height
-            preview = ReliefImage.grayImage(result.previewShaded,
-                                            rows: result.previewRows,
-                                            cols: result.previewCols)
-            previewMesh = await service.previewMesh(height: result.height,
-                                                    config: config)
-            summary = "\(result.routeMode) · \(result.regionCount) regions · depth \(result.depthBackend)"
+            try Task.checkCancellation()
+
+            adopt(conversion.checkpoint, height: conversion.height,
+                  shaded: conversion.shaded)
+            stage = .converting(label: PipelinePhase.mesh.label, fraction: 0.9)
+            previewMesh = await relief.previewMesh(height: conversion.height,
+                                                   config: config)
+            try Task.checkCancellation()
             stage = .ready
             await setStatus(.ready)
+            await save(conversion.checkpoint)
         } catch is CancellationError {
             stage = .idle
         } catch {
@@ -225,25 +294,77 @@ final class ProjectDetailViewModel {
         }
     }
 
+    /// Reopening a converted project. Decoding the checkpoint and re-blending
+    /// it is seconds of work against the minutes stages 1–4 cost, which is the
+    /// entire reason the file exists.
+    private func restore() {
+        task?.cancel()
+        stage = .converting(label: "Opening your saved project", fraction: 0.08)
+        let config = currentConfig()
+        task = Task { [weak self] in await self?.runRestore(config) }
+    }
+
+    private func runRestore(_ config: ReliefConfig) async {
+        guard let data = await projects.checkpoint(id: projectID),
+              let saved = await relief.decodeCheckpoint(data) else {
+            // The file is gone, truncated, or from a format this build cannot
+            // read. Converting again is slow but it is never wrong.
+            convert()
+            return
+        }
+        guard !Task.isCancelled else { return }
+
+        stage = .converting(label: PipelinePhase.volume.label, fraction: 0.4)
+        let (surface, shaded) = await relief.reblend(saved, config: config)
+        guard !Task.isCancelled else { return }
+        adopt(saved, height: surface, shaded: shaded)
+
+        stage = .converting(label: PipelinePhase.mesh.label, fraction: 0.8)
+        let mesh = await relief.previewMesh(height: surface, config: config)
+        guard !Task.isCancelled else { return }
+        previewMesh = mesh
+        stage = .ready
+    }
+
+    private func adopt(_ checkpoint: ReliefCheckpoint, height: Plane, shaded: [Float]) {
+        self.checkpoint = checkpoint
+        self.height = height
+        preview = ReliefImage.grayImage(shaded, rows: height.rows, cols: height.cols)
+        summary = "\(checkpoint.routeMode) · \(checkpoint.regionCount) regions · depth \(checkpoint.depthBackend)"
+    }
+
+    private func save(_ checkpoint: ReliefCheckpoint) async {
+        beginSave()
+        let data = await relief.encode(checkpoint)
+        await projects.setCheckpoint(data, id: projectID)
+        project = await projects.project(id: projectID)
+        endSave()
+    }
+
     /// Re-blend after a slider move. Only the Depth slider is free — it is a
     /// pure scale applied at export — but all four stay off the solver.
     func refine() {
-        guard let output else { return }
-        task?.cancel()
+        guard let checkpoint else { return }
+        refineTask?.cancel()
+        persistSettings()
         let config = currentConfig()
-        let service = relief
-        task = Task { [weak self] in
-            let (newHeight, shaded) = await service.reblend(output, config: config)
-            guard !Task.isCancelled else { return }
-            let mesh = await service.previewMesh(height: newHeight, config: config)
-            guard !Task.isCancelled else { return }
-            await MainActor.run {
-                self?.height = newHeight
-                self?.preview = ReliefImage.grayImage(shaded, rows: newHeight.rows,
-                                                      cols: newHeight.cols)
-                self?.previewMesh = mesh
-            }
-        }
+        refineTask = Task { [weak self] in await self?.runRefine(checkpoint, config) }
+    }
+
+    private func runRefine(_ checkpoint: ReliefCheckpoint, _ config: ReliefConfig) async {
+        refiningLabel = PipelinePhase.volume.label
+        let (surface, shaded) = await relief.reblend(checkpoint, config: config)
+        guard !Task.isCancelled else { return }
+        height = surface
+        preview = ReliefImage.grayImage(shaded, rows: surface.rows, cols: surface.cols)
+
+        refiningLabel = PipelinePhase.mesh.label
+        let mesh = await relief.previewMesh(height: surface, config: config)
+        // Cancelled means a newer edit is already on its way and owns the
+        // label from here; clearing it would blank a bar that is still running.
+        guard !Task.isCancelled else { return }
+        previewMesh = mesh
+        refiningLabel = nil
     }
 
     func resetSliders() {
@@ -255,19 +376,6 @@ final class ProjectDetailViewModel {
     // behind the export sheet, which picks the format and the destination.
 
     // MARK: - Config
-
-    /// Slider positions mapped onto the pipeline's own parameters.
-    enum Sliders {
-        static let depthDefault = 0.72      // ~30 mm, the reference export
-        static let smoothDefault = 0.5
-        static let textureDefault = 0.8     // lambda_detail 0.04 of a 0.05 cap
-        static let outlineDefault = 1.0
-
-        static func reliefMm(_ t: Double) -> Double { 4 + t * 36 }        // 4–40 mm
-        static func lambdaRough(_ t: Double) -> Double { t * 0.7 }        // 0–0.7
-        static func lambdaMain(_ t: Double) -> Double { 0.7 - t * 0.5 }   // 0.7–0.2
-        static func lambdaDetail(_ t: Double) -> Double { t * 0.05 }      // capped at 0.05
-    }
 
     func currentConfig() -> ReliefConfig {
         var config = ReliefConfig()
@@ -281,10 +389,34 @@ final class ProjectDetailViewModel {
         return config
     }
 
+    // MARK: - Saving
+
+    /// Written on every committed edit rather than on leaving the screen: there
+    /// is no "leaving" to hook — the workspace is dismissed by a swipe as often
+    /// as by the Back button, and the app can be killed from either.
+    private func persistSettings() {
+        guard project?.settings != settings else { return }
+        project?.settings = settings
+        beginSave()
+        let snapshot = settings
+        Task { [weak self] in await self?.writeSettings(snapshot) }
+    }
+
+    /// Reads the record back inside the task rather than posting the one on
+    /// hand: the conversion's own status writes are in flight against the same
+    /// record, and this must not carry a stale `status` over them.
+    private func writeSettings(_ settings: ReliefSettings) async {
+        if var latest = await projects.project(id: projectID) {
+            latest.settings = settings
+            await projects.save(latest)
+        }
+        endSave()
+    }
+
     private func setStatus(_ status: ProjectStatus) async {
-        guard var project else { return }
+        guard var project, project.status != status else { return }
         project.status = status
         await projects.save(project)
-        self.project = project
+        self.project = await projects.project(id: projectID)
     }
 }

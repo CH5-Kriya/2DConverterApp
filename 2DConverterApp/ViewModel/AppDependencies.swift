@@ -9,12 +9,18 @@ final class AppDependencies {
     /// thread — see `ReliefService` for why that is not automatic here.
     let relief: ReliefService
 
+    /// Live workspaces, so a project survives a trip to Home.
+    let workspaces: ProjectWorkspaceStore
+
     // Built in the body rather than as a default argument: default argument
     // expressions evaluate outside the actor and warn under
     // SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor.
     init(projects: ProjectRepository? = nil) {
-        self.projects = projects ?? InMemoryProjectRepository()
-        self.relief = ReliefService()
+        let repository = projects ?? FileProjectRepository()
+        let service = ReliefService()
+        self.projects = repository
+        self.relief = service
+        self.workspaces = ProjectWorkspaceStore(projects: repository, relief: service)
     }
 
     #if DEBUG

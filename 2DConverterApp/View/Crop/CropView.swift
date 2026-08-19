@@ -16,7 +16,7 @@ struct CropView: View {
 
     init(projectID: UUID, dependencies: AppDependencies) {
         _model = State(initialValue: CropViewModel(projectID: projectID,
-                                                    projects: dependencies.projects))
+                                                   dependencies: dependencies))
     }
 
     var body: some View {

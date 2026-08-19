@@ -12,7 +12,7 @@ struct MyScansView: View {
     private let columns = [GridItem(.adaptive(minimum: 220, maximum: 320), spacing: 24)]
 
     init(dependencies: AppDependencies) {
-        _model = State(initialValue: MyScansViewModel(projects: dependencies.projects))
+        _model = State(initialValue: MyScansViewModel(dependencies: dependencies))
     }
 
     var body: some View {
