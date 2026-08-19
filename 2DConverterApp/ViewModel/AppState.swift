@@ -4,7 +4,6 @@ enum AppRoute: String, CaseIterable, Identifiable, Hashable {
     case home
     case myScans
     case tutorials
-    case settings
 
     var id: String { rawValue }
 
@@ -13,7 +12,6 @@ enum AppRoute: String, CaseIterable, Identifiable, Hashable {
         case .home:      "Home"
         case .myScans:   "My Scans"
         case .tutorials: "Tutorials"
-        case .settings:  "Settings"
         }
     }
 
@@ -22,7 +20,6 @@ enum AppRoute: String, CaseIterable, Identifiable, Hashable {
         case .home:      "house"
         case .myScans:   "bookmark"
         case .tutorials: "lightbulb"
-        case .settings:  "gearshape"
         }
     }
 
@@ -31,7 +28,6 @@ enum AppRoute: String, CaseIterable, Identifiable, Hashable {
         case .home:      "house.fill"
         case .myScans:   "bookmark.fill"
         case .tutorials: "lightbulb.fill"
-        case .settings:  "gearshape.fill"
         }
     }
 }

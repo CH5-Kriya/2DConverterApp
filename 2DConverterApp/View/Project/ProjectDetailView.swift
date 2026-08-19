@@ -8,6 +8,13 @@ struct ProjectDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var model: ProjectDetailViewModel
     @State private var showingExport = false
+
+    /// App-wide and `@AppStorage` rather than per-project state: how much of
+    /// the panel someone wants to see is a fact about them, not about the
+    /// relief they happen to have open. Simple by default — Advanced is
+    /// something you go and ask for.
+    @AppStorage("reliefConfigurationMode")
+    private var mode: ProjectDetailViewModel.ConfigurationMode = .simple
     @State private var isRenaming = false
     @State private var draftName = ""
 
@@ -281,10 +288,10 @@ struct ProjectDetailView: View {
     private var configurationPanel: some View {
         VStack(alignment: .leading, spacing: 24) {
             VStack(alignment: .leading, spacing: 16) {
-                sectionTitle("Preset")
-                Picker("Preset", selection: presetBinding) {
-                    ForEach(ProjectDetailViewModel.Preset.allCases) { preset in
-                        Text(preset.rawValue).tag(preset)
+                sectionTitle("Mode")
+                Picker("Mode", selection: $mode) {
+                    ForEach(ProjectDetailViewModel.ConfigurationMode.allCases) { mode in
+                        Text(mode.rawValue).tag(mode)
                     }
                 }
                 .pickerStyle(.segmented)
@@ -294,12 +301,14 @@ struct ProjectDetailView: View {
             VStack(alignment: .leading, spacing: 16) {
                 sectionTitle("Configuration")
                 VStack(alignment: .leading, spacing: 12) {
-                    ForEach(ProjectDetailViewModel.Control.allCases) { control in
+                    ForEach(ProjectDetailViewModel.Control.shown(in: mode)) { control in
                         parameterRow(control)
                     }
+                    hiddenSettingsNote
                 }
             }
         }
+        .animation(.easeInOut(duration: 0.2), value: mode)
         .padding(24)
         .frame(width: Theme.Metrics.workspacePanelWidth, alignment: .leading)
         .background(Theme.Palette.workspacePanel,
@@ -307,6 +316,20 @@ struct ProjectDetailView: View {
                                          style: .continuous))
         .disabled(!model.canRefine)
         .opacity(model.canRefine ? 1 : 0.5)
+    }
+
+    /// Simple hides two sliders; it does not neutralise them. When one of them
+    /// is off its default the shape on screen has an input the panel isn't
+    /// showing, and saying so is cheaper than letting it read as a bug.
+    @ViewBuilder
+    private var hiddenSettingsNote: some View {
+        let hidden = model.advancedEditCount
+        if mode == .simple && hidden > 0 {
+            Text(hidden == 1 ? "1 advanced setting in use"
+                             : "\(hidden) advanced settings in use")
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.Palette.textTertiary)
+        }
     }
 
     private func sectionTitle(_ text: String) -> some View {
@@ -366,10 +389,6 @@ struct ProjectDetailView: View {
     }
 
     // MARK: - Bindings
-
-    private var presetBinding: Binding<ProjectDetailViewModel.Preset> {
-        Binding { model.settings.preset } set: { model.select($0) }
-    }
 
     private func binding(for control: ProjectDetailViewModel.Control) -> Binding<Double> {
         Binding { model.value(for: control) } set: { model.setValue($0, for: control) }
