@@ -55,7 +55,6 @@ struct RootView: View {
         case .home:      HomeView(dependencies: dependencies)
         case .myScans:   MyScansView(dependencies: dependencies)
         case .tutorials: TutorialsView()
-        case .settings:  SettingsView()
         }
     }
 }

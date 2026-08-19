@@ -13,9 +13,25 @@ struct CreateProjectDialog: View {
         @Bindable var model = model
 
         ZStack {
-            scrim
-            card
+            // The camera replaces the dialog rather than covering it. This
+            // layer is already the app's full-screen modal — presenting a
+            // `fullScreenCover` from here would mean UIKit dismissing the
+            // camera at the same moment SwiftUI removes the thing that
+            // presented it, which is how covers get stranded on screen.
+            if model.isPresentingCamera {
+                ScanCameraView { data in
+                    model.isPresentingCamera = false
+                    Task { await model.importCaptured(data) }
+                } onCancel: {
+                    model.isPresentingCamera = false
+                }
+                .transition(.opacity)
+            } else {
+                scrim
+                card
+            }
         }
+        .animation(.snappy(duration: 0.22), value: model.isPresentingCamera)
         .photosPicker(
             isPresented: $model.isPresentingPicker,
             selection: $model.pickedItem,
@@ -63,8 +79,10 @@ struct CreateProjectDialog: View {
                     systemImage: "doc.viewfinder",
                     title: "Scan Artwork",
                     caption: "Use your camera to scan the project",
-                    isEnabled: false
-                ) {}
+                    isEnabled: !model.isImporting
+                ) {
+                    model.isPresentingCamera = true
+                }
 
                 CreateOptionCard(
                     systemImage: "photo.badge.plus",

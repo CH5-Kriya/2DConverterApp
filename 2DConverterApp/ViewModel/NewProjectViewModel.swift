@@ -8,6 +8,7 @@ final class NewProjectViewModel {
     private let projects: ProjectRepository
 
     var isPresentingPicker = false
+    var isPresentingCamera = false
     var pickedItem: PhotosPickerItem?
     var isImporting = false
     var errorMessage: String?
@@ -39,17 +40,32 @@ final class NewProjectViewModel {
                 errorMessage = "That image could not be read."
                 return
             }
-            let project = Project(
-                name: Self.defaultName(),
-                status: .draft,
-                thumbnail: ProjectThumbnail.make(from: data)
-            )
-            await projects.save(project)
-            await projects.setSourceImage(data, id: project.id)
-            createdProject = await projects.project(id: project.id)
+            await create(from: data)
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// A scan, once the camera has handed back a photograph.
+    ///
+    /// The same checkpoint as a gallery import, and deliberately the same code
+    /// underneath it: from here on the two are indistinguishable, so the crop
+    /// step and everything after it only ever has one kind of project to open.
+    func importCaptured(_ data: Data) async {
+        isImporting = true
+        defer { isImporting = false }
+        await create(from: data)
+    }
+
+    private func create(from data: Data) async {
+        let project = Project(
+            name: Self.defaultName(),
+            status: .draft,
+            thumbnail: ProjectThumbnail.make(from: data)
+        )
+        await projects.save(project)
+        await projects.setSourceImage(data, id: project.id)
+        createdProject = await projects.project(id: project.id)
     }
 
     func clearCreatedProject() {

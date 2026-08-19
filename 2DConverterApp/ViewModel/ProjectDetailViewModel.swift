@@ -50,9 +50,19 @@ final class ProjectDetailViewModel {
 
     // MARK: Parameters
 
-    typealias Preset = ReliefPreset
     typealias Settings = ReliefSettings
     typealias Sliders = ReliefSliders
+
+    /// How much of the panel is on screen. Purely a matter of disclosure: it
+    /// hides sliders, it never moves them. Switching modes therefore writes
+    /// nothing, commits nothing and adds no undo step — a tune made in Advanced
+    /// survives a trip through Simple untouched, just out of sight.
+    enum ConfigurationMode: String, CaseIterable, Identifiable {
+        case simple = "Simple"
+        case advanced = "Advanced"
+
+        var id: Self { self }
+    }
 
     /// One of the four sliders. An enum rather than an index into a label
     /// array: the array and the bindings can drift apart, this can't.
@@ -64,6 +74,26 @@ final class ProjectDetailViewModel {
 
         var id: Self { self }
         var title: String { rawValue }
+
+        /// Simple keeps the two sliders that describe a physical outcome —
+        /// Depth is a length in millimetres, Smoothness is rough-versus-clean
+        /// and visible in the preview at a glance. Texture and Outline are
+        /// solver weights: `lambda_detail` is subtle by construction, and
+        /// `ordering_strength` doesn't look wrong when it's wrong, it looks
+        /// broken. Neither rewards guessing, so neither is shown until asked for.
+        var isAdvanced: Bool {
+            switch self {
+            case .depth, .smoothness: false
+            case .texture, .outline:  true
+            }
+        }
+
+        static func shown(in mode: ConfigurationMode) -> [Control] {
+            switch mode {
+            case .simple:   allCases.filter { !$0.isAdvanced }
+            case .advanced: allCases
+            }
+        }
     }
 
     var settings = Settings()
@@ -134,7 +164,11 @@ final class ProjectDetailViewModel {
         saveState = .idle
     }
 
-    func value(for control: Control) -> Double {
+    func value(for control: Control) -> Double { value(for: control, in: settings) }
+
+    /// Takes the settings to read rather than always reading `settings`, so the
+    /// same mapping can be pointed at a defaults struct for comparison.
+    private func value(for control: Control, in settings: Settings) -> Double {
         switch control {
         case .depth:      settings.depth
         case .smoothness: settings.smoothness
@@ -164,10 +198,14 @@ final class ProjectDetailViewModel {
         }
     }
 
-    func select(_ preset: Preset) {
-        guard preset != settings.preset else { return }
-        settings = preset.settings
-        commit()
+    /// How many of the hidden sliders are away from their default, so Simple
+    /// can say so. Without it, output shaped by a value the panel isn't showing
+    /// reads as the two visible sliders behaving strangely.
+    var advancedEditCount: Int {
+        let defaults = Settings()
+        return Control.allCases.filter { control in
+            control.isAdvanced && value(for: control) != value(for: control, in: defaults)
+        }.count
     }
 
     init(projectID: UUID, projects: ProjectRepository, relief: ReliefService) {
@@ -367,8 +405,10 @@ final class ProjectDetailViewModel {
         refiningLabel = nil
     }
 
+    /// All four, including any that Simple is currently hiding: reset means
+    /// back to the baseline, not back to the baseline for the half on screen.
     func resetSliders() {
-        settings = settings.preset.settings
+        settings = Settings()
         commit()
     }
 
