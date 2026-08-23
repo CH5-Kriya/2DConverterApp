@@ -5,42 +5,45 @@ struct StartNewProjectCard: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 0) {
-                Spacer(minLength: 0)
-
+            VStack(spacing: 31) {
                 Image(systemName: "plus")
-                    .font(.system(size: 60, weight: .medium))
-                    .foregroundStyle(Theme.Palette.textPrimary)
+                    .font(.system(size: 82, weight: .medium))
+                    .foregroundStyle(Theme.Palette.white)
 
-                Spacer(minLength: 32)
+                VStack(spacing: 5) {
+                    Text("Start new project")
+                        .font(Theme.Typography.heading)
+                        .foregroundStyle(Theme.Palette.white)
 
-                Text("Start new project")
-                    .font(Theme.Typography.heading)
-                    .foregroundStyle(Theme.Palette.textPrimary)
-
-                Text("Ready to turn your 2D into 3D again?")
-                    .font(Theme.Typography.caption)
-                    .foregroundStyle(Theme.Palette.textSecondary)
-                    .padding(.top, 6)
-
-                Spacer(minLength: 0)
+                    Text("Turn visual art into something you can feel.")
+                        .font(Theme.Typography.meta)
+                        .foregroundStyle(Theme.Palette.textInactive)
+                }
+                .multilineTextAlignment(.center)
             }
             .padding(32)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background {
-                RoundedRectangle(cornerRadius: Theme.Metrics.cardRadius, style: .continuous)
-                    .strokeBorder(Theme.Palette.border, lineWidth: 1.5)
+            .background(Theme.Palette.cardFill)
+            // Dashed, because the card is an invitation to put something here
+            // rather than a thing that already exists.
+            .overlay {
+                RoundedRectangle(cornerRadius: Theme.Metrics.panelRadius, style: .continuous)
+                    .strokeBorder(Theme.Palette.white,
+                                  style: StrokeStyle(lineWidth: 1, dash: [8, 6]))
             }
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Metrics.panelRadius,
+                                        style: .continuous))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Start new project")
+        .accessibilityHint("Turn visual art into something you can feel.")
     }
 }
 
 #Preview {
     StartNewProjectCard {}
-        .frame(width: 455, height: 450)
+        .frame(width: 457, height: 453)
         .padding()
         .background(Theme.Palette.canvas)
         .preferredColorScheme(.dark)

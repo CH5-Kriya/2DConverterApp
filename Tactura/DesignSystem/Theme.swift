@@ -3,18 +3,31 @@ import SwiftUI
 enum Theme {
 
     enum Palette {
-        static let canvas = Color(hex: 0x0A0A0A)
-        static let sidebar = Color(hex: 0x141414)
+        static let canvas = Color(hex: 0x141414)
+        static let sidebar = Color(hex: 0x0E0E0E)
         static let surface = Color(hex: 0x1C1C1C)
+
+        /// Home's two cards, and the darker well the recent list sits in. The
+        /// well is darker than the card it lives in, not lighter: the rows are
+        /// content dropped into the panel rather than raised off it.
+        static let cardFill = Color(hex: 0x161616)
+        static let panelFill = Color(hex: 0x0D0D0D)
+        static let thumbnailFill = Color(hex: 0x292929)
         static let surfaceSelected = Color(hex: 0x2C2C2C)
         static let separator = Color.white.opacity(0.08)
         static let border = Color.white.opacity(0.35)
 
         static let textPrimary = Color.white
-        static let textSecondary = Color(hex: 0xA3A3A3)
-        static let textTertiary = Color(hex: 0x6B6B6B)
+        static let textSecondary = Color(hex: 0xAEAEAE)
+        static let textTertiary = Color(hex: 0x8C8989)
+        /// Dimmer than tertiary and used where the text is genuinely optional:
+        /// a card's supporting line, an unselected rail icon.
+        static let textInactive = Color(hex: 0x7E7E7E)
 
         static let accentFill = Color(hex: 0xF5F5F5)
+        /// Figma's `White` variable. Not pure white, and used wherever the
+        /// design calls for white: the dashed outline, the workspace labels.
+        static let white = Color(hex: 0xF8F8F8)
         static let onAccent = Color(hex: 0x0A0A0A)
 
         /// The one saturated colour in the palette, reserved for moving forward
@@ -36,7 +49,7 @@ enum Theme {
         static let workspacePanel = Color(hex: 0x0D0D0D)
         static let workspaceControl = Color(hex: 0x0B0B0B)
         static let workspaceStroke = Color.white.opacity(0.5)
-        static let workspaceLabel = Color(hex: 0xF8F8F8)
+        static let workspaceLabel = white
     }
 
     enum Metrics {
@@ -48,6 +61,8 @@ enum Theme {
 
         static let contentPadding: CGFloat = 64
         static let cardRadius: CGFloat = 18
+        /// Home's cards are rounder than the rest of the app's.
+        static let panelRadius: CGFloat = 24
         static let buttonRadius: CGFloat = 14
         static let buttonHeight: CGFloat = 68
         static let buttonWidth: CGFloat = 320
@@ -63,9 +78,13 @@ enum Theme {
 
     enum Typography {
         static let display = Font.system(size: 56, weight: .bold)
-        static let largeTitle = Font.system(size: 38, weight: .bold)
+        static let largeTitle = Font.system(size: 40, weight: .medium)
         static let title = Font.system(size: 34, weight: .bold)
         static let rowTitle = Font.system(size: 20, weight: .semibold)
+        static let panelTitle = Font.system(size: 20, weight: .semibold)
+        static let listTitle = Font.system(size: 18, weight: .semibold)
+        static let link = Font.system(size: 18, weight: .regular)
+        static let meta = Font.system(size: 14, weight: .regular)
         static let heading = Font.system(size: 26, weight: .semibold)
         static let wordmark = Font.system(size: 28, weight: .bold)
         static let body = Font.system(size: 20, weight: .regular)

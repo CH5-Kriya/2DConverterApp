@@ -89,17 +89,18 @@ private struct ReturningHome: View {
     let recent: [Project]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text("Good to see you again!")
-                .font(Theme.Typography.largeTitle)
-                .foregroundStyle(Theme.Palette.textPrimary)
+        VStack(alignment: .leading, spacing: 70) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Good to see you again!")
+                    .font(Theme.Typography.largeTitle)
+                    .foregroundStyle(Theme.Palette.white)
 
-            Text("Ready to turn your 2D into 2.5D again?")
-                .font(Theme.Typography.body)
-                .foregroundStyle(Theme.Palette.textSecondary)
-                .padding(.top, 10)
+                Text("Ready to bring more art to life through touch?")
+                    .font(Theme.Typography.body)
+                    .foregroundStyle(Theme.Palette.textSecondary)
+            }
 
-            HStack(alignment: .top, spacing: 40) {
+            HStack(alignment: .top, spacing: 39) {
                 StartNewProjectCard {
                     appState.isPresentingNewProject = true
                 }
@@ -108,10 +109,7 @@ private struct ReturningHome: View {
                 RecentScansPanel(recent: recent)
                     .frame(maxWidth: .infinity)
             }
-            .frame(maxHeight: 450)
-            .padding(.top, 56)
-
-            Spacer(minLength: 0)
+            .frame(height: 453)
         }
         .padding(.horizontal, Theme.Metrics.contentPadding)
         .padding(.top, 56)
