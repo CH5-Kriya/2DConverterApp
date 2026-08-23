@@ -27,10 +27,18 @@ private struct ScanThumbnail: View {
                     Image(uiImage: image)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
-                        .clipShape(RoundedRectangle(cornerRadius: cornerRadius,
-                                                    style: .continuous))
                 }
             }
+            // Clipped here, on the plate, rather than on the image.
+            //
+            // `ProjectThumbnail` bounds the long edge and leaves the import's
+            // aspect ratio alone, so these are rarely square, and `.fill`
+            // reports the *filled* size — larger than the plate on one axis.
+            // A clip shape on the image is therefore cut to the overflow rather
+            // than to the plate and holds nothing back: a portrait scan drew
+            // over its own title, a wide one over the card beside it, and no
+            // two tiles read as the same size.
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
     }
 }
 

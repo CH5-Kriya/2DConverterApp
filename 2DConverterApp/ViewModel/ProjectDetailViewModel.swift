@@ -189,13 +189,31 @@ final class ProjectDetailViewModel {
     /// Only Depth is a length. Smoothness, Texture and Outline are blend
     /// weights, so labelling them "mm" would put a fabrication number on
     /// something that isn't one.
-    func readout(for control: Control) -> String {
+    func readout(for control: Control) -> String { readout(for: control, in: settings) }
+
+    private func readout(for control: Control, in settings: Settings) -> String {
         switch control {
         case .depth:
             String(format: "%.0f mm", Sliders.reliefMm(settings.depth))
         case .smoothness, .texture, .outline:
-            "\(Int((value(for: control) * 100).rounded()))%"
+            "\(Int((value(for: control, in: settings) * 100).rounded()))%"
         }
+    }
+
+    /// Where a slider sits when nothing has been tuned, for the mark the panel
+    /// puts under the track.
+    ///
+    /// None of the four default to the middle of their range and one defaults
+    /// to the top of it, so the thumb's position says what the value *is*
+    /// without saying whether it is more or less than the pipeline's own.
+    func defaultValue(for control: Control) -> Double {
+        value(for: control, in: Settings())
+    }
+
+    /// Spelled exactly the way the readout box spells the live value, so the
+    /// two can be compared without converting between units.
+    func defaultReadout(for control: Control) -> String {
+        readout(for: control, in: Settings())
     }
 
     /// How many of the hidden sliders are away from their default, so Simple
