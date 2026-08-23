@@ -7,7 +7,11 @@ import SwiftUI
 struct ProjectDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var model: ProjectDetailViewModel
-    @State private var showingExport = false
+
+    /// The export run, and the panel's mode: while this exists the card on the
+    /// right is the export form rather than the sliders. One piece of state for
+    /// both, so the form cannot outlive the run or the run the form.
+    @State private var export: ExportViewModel?
 
     /// App-wide and `@AppStorage` rather than per-project state: how much of
     /// the panel someone wants to see is a fact about them, not about the
@@ -42,18 +46,6 @@ struct ProjectDetailView: View {
                 Task { await model.rename(to: draftName) }
             }
             .disabled(draftName.trimmingCharacters(in: .whitespaces).isEmpty)
-        }
-        .fullScreenCover(isPresented: $showingExport) {
-            if let height = model.height {
-                ExportSheet(projectName: model.project?.name ?? "relief",
-                            preview: model.preview,
-                            height: height,
-                            config: model.currentConfig(),
-                            relief: model.relief) {
-                    Task { await model.markExported() }
-                }
-                .presentationBackground(.clear)
-            }
         }
     }
 
@@ -109,11 +101,12 @@ struct ProjectDetailView: View {
 
             VStack(spacing: 0) {
                 Spacer(minLength: 0)
-                configurationPanel
+                panelCard
                 Spacer(minLength: 0)
-                exportButton
+                panelActions
             }
             .frame(width: Theme.Metrics.workspacePanelWidth)
+            .animation(.easeInOut(duration: 0.18), value: isExporting)
         }
         .padding(.top, 16)
     }
@@ -137,6 +130,15 @@ struct ProjectDetailView: View {
                     .buttonStyle(.workspaceChip)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+        // Until `load()` returns there is no project, let alone a mesh, and an
+        // empty 3D canvas is indistinguishable from a black screen. Short —
+        // one file read — but it is the first thing the workspace shows, and
+        // the push has already put it on screen by then.
+        case .idle where model.isLoading:
+            ProgressView()
+                .controlSize(.large)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
         case .idle where model.project?.hasSourceImage == false:
             EmptyStateView(systemImage: "photo.badge.plus",
@@ -283,6 +285,41 @@ struct ProjectDetailView: View {
         .opacity(model.canRefine ? 1 : 0.35)
     }
 
+    /// True only when there is both a run to show and a surface to write, which
+    /// is what `panelCard` and `panelActions` both key off: the card and the
+    /// buttons beneath it can then never disagree about which mode the panel is
+    /// in.
+    private var isExporting: Bool { export != nil && model.height != nil }
+
+    @ViewBuilder
+    private var panelCard: some View {
+        if let export, isExporting {
+            ExportCard(model: export).transition(.opacity)
+        } else {
+            configurationPanel.transition(.opacity)
+        }
+    }
+
+    /// The panel's bottom slot. Export sits where it always has until the form
+    /// is up, at which point Cancel takes that place and Export moves one row
+    /// above it — so the button directly under the card is always the one that
+    /// leaves the mode.
+    @ViewBuilder
+    private var panelActions: some View {
+        if let export, let height = model.height, isExporting {
+            ExportActions(model: export,
+                          height: height,
+                          config: model.currentConfig(),
+                          onClose: { self.export = nil },
+                          onFinished: {
+                              Task { await model.markExported() }
+                              self.export = nil
+                          })
+        } else {
+            exportButton
+        }
+    }
+
     // MARK: - Configuration
 
     private var configurationPanel: some View {
@@ -344,14 +381,19 @@ struct ProjectDetailView: View {
                 .font(.system(size: 14))
                 .foregroundStyle(Theme.Palette.textPrimary)
 
-            HStack(spacing: 16) {
-                Slider(value: binding(for: control), in: 0...1) { editing in
-                    // One drag is one edit. Committing per touch event would
-                    // fill the undo stack with sixty steps nobody asked for,
-                    // and re-blend on every one of them.
-                    if !editing { model.commit() }
+            HStack(alignment: .top, spacing: 16) {
+                VStack(spacing: 3) {
+                    Slider(value: binding(for: control), in: 0...1) { editing in
+                        // One drag is one edit. Committing per touch event would
+                        // fill the undo stack with sixty steps nobody asked for,
+                        // and re-blend on every one of them.
+                        if !editing { model.commit() }
+                    }
+                    .tint(Theme.Palette.accentFill)
+                    .accessibilityHint("Default \(model.defaultReadout(for: control))")
+
+                    defaultMark(for: control)
                 }
-                .tint(Theme.Palette.accentFill)
 
                 Text(model.readout(for: control))
                     .font(.system(size: 12))
@@ -366,12 +408,52 @@ struct ProjectDetailView: View {
         }
     }
 
-    /// Opens the export sheet rather than writing a file here. Choosing the
-    /// format and the destination is a whole screen of its own, and the sheet
-    /// builds the solid from the exact height field on display.
+    /// The default, marked under the track.
+    ///
+    /// A slider says where the value is; it does not say whether that is more
+    /// or less than the pipeline's own setting, and none of these four default
+    /// to the middle of their range — Outline defaults to the top of its. The
+    /// mark is what makes "deeper than usual" readable without having to
+    /// remember that usual is 30 mm.
+    private func defaultMark(for control: ProjectDetailViewModel.Control) -> some View {
+        GeometryReader { proxy in
+            // The thumb's centre travels between half a thumb from each end of
+            // the track, so the mark follows that span rather than the full
+            // width. At the ends — where Outline's default sits — placing it at
+            // a plain fraction of the width would miss by the whole 14 pt.
+            let travel = max(proxy.size.width - Self.sliderThumb, 0)
+            UpTriangle()
+                .fill(Theme.Palette.textTertiary)
+                .frame(width: Self.markWidth, height: Self.markHeight)
+                .offset(x: Self.sliderThumb / 2
+                           + travel * model.defaultValue(for: control)
+                           - Self.markWidth / 2)
+        }
+        .frame(height: Self.markHeight)
+        // The slider carries the same fact as a hint, spelled in the readout's
+        // own units, so nothing here is only available to people who can see it.
+        .accessibilityHidden(true)
+    }
+
+    /// The slider thumb, measured rather than assumed: iOS 26 draws it as a
+    /// 36 pt capsule, not the 28 pt circle it used to be. Getting this wrong
+    /// tilts every mark outward from the centre — at 28 the mark for a default
+    /// of 1.0 sat 4 pt past the thumb it was pointing at.
+    private static let sliderThumb: CGFloat = 36
+    private static let markWidth: CGFloat = 7
+    private static let markHeight: CGFloat = 5
+
+    /// Hands the panel over to the export form rather than writing a file
+    /// here. Choosing the format and the destination is a handful of fields,
+    /// not a screen of its own, and they ask about the relief already on
+    /// display — so they take the card beside it instead of covering it.
     private var exportButton: some View {
         VStack(spacing: 12) {
-            Button("Export") { showingExport = true }
+            Button("Export") {
+                guard model.height != nil else { return }
+                export = ExportViewModel(projectName: model.project?.name ?? "relief",
+                                         relief: model.relief)
+            }
                 .buttonStyle(.tacturaAccent)
                 // Disabled mid-refine, not merely discouraged: the height field
                 // on hand is still the previous edit's, and exporting it would
@@ -392,6 +474,20 @@ struct ProjectDetailView: View {
 
     private func binding(for control: ProjectDetailViewModel.Control) -> Binding<Double> {
         Binding { model.value(for: control) } set: { model.setValue($0, for: control) }
+    }
+}
+
+/// The mark under a slider's track. Drawn rather than borrowed from SF Symbols:
+/// `arrowtriangle.up.fill` carries its own padding inside the glyph, so at five
+/// points the tip would not land on the value it points at.
+private struct UpTriangle: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.midX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        path.closeSubpath()
+        return path
     }
 }
 
