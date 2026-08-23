@@ -16,7 +16,7 @@ func runFullOnJPEG() {
 
     // The real Core ML backend, pointed at the bundled artefacts directly, so
     // this reproduces exactly what the app does rather than the fallback.
-    let res = URL(fileURLWithPath: "/Users/elliezer/Documents/Projects/Challenge 5/ios-app/2DConverterApp/2DConverterApp/Resources")
+    let res = URL(fileURLWithPath: "/Users/elliezer/Documents/Projects/Challenge 5/ios-app/2DConverterApp/Tactura/Resources")
     var backend: DepthBackend = ClassicalLayersBackend()
     if let pe = PositionEmbedding(contentsOf: res.appendingPathComponent("base_1x1370x1024.f32")) {
         backend = CoreMLDepthBackend(

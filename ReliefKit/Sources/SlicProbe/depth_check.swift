@@ -10,7 +10,7 @@ func checkCoreMLDepth() {
           let rgb = try? f.plane("00_input"),
           let ref = try? f.plane("03_depth_raw") else { print("no fixture"); return }
 
-    let res = URL(fileURLWithPath: "/Users/elliezer/Documents/Projects/Challenge 5/ios-app/2DConverterApp/2DConverterApp/Resources")
+    let res = URL(fileURLWithPath: "/Users/elliezer/Documents/Projects/Challenge 5/ios-app/2DConverterApp/Tactura/Resources")
     guard let pe = PositionEmbedding(contentsOf: res.appendingPathComponent("base_1x1370x1024.f32"))
     else { print("no position grid"); return }
     let backend = CoreMLDepthBackend(
