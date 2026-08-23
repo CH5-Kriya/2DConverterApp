@@ -48,7 +48,10 @@ final class AppState {
     var route: AppRoute = .home
     var detailPath: [AppDestination] = []
 
-    /// Collapsed does not mean gone: the rail stays as icons only.
+    /// Collapsed does not mean gone: the rail stays as icons only. A pushed
+    /// page hides the sidebar outright, but that is `RootView`'s layout rather
+    /// than this flag: the two are independent, so coming back out of the
+    /// workspace restores whatever width the person had chosen.
     var isSidebarExpanded = true
 
     var isPresentingNewProject = false
