@@ -7,10 +7,13 @@ import UIKit
 /// only way some of these parameters can be judged: smoothness and texture
 /// change the surface at grazing angles long before they change it head-on.
 ///
-/// `RealityView` plus `.realityViewCameraControls(.orbit)` is what gives the
-/// STL-viewer interaction — drag to orbit, pinch to dolly — without hand-rolling
-/// the gesture stack. RealityKit rather than SceneKit because SceneKit is
-/// deprecated.
+/// STL-viewer interaction — drag to orbit, pinch to dolly — with the camera
+/// driven from `ReliefStage` rather than by `.realityViewCameraControls(.orbit)`.
+/// The built-in controller is the obvious choice and was the first one, but its
+/// pinch gain is fixed and far too eager at this scale: a plate is 0.3 m across,
+/// and a modest pinch dollied the camera clean through it. `CameraControls`
+/// exposes no way to turn that down, so the gesture stack is ours.
+/// RealityKit rather than SceneKit because SceneKit is deprecated.
 struct Relief3DPreview: View {
     var mesh: ReliefPreviewMesh?
 
@@ -21,6 +24,17 @@ struct Relief3DPreview: View {
     /// decision they want to retake every time they open a project.
     @AppStorage("relief3DShowsGrid") private var showsGrid = true
 
+    /// Both gestures report totals measured from where they began, and the
+    /// camera moves in increments, so the last reading has to be kept to
+    /// difference against.
+    @State private var lastTranslation: CGSize = .zero
+    @State private var lastMagnification: CGFloat = 1
+
+    /// A pinch drifts its centroid as the fingers move, and SwiftUI hands that
+    /// drift to the drag gesture as well — which spun the model while the user
+    /// was only trying to zoom. The drag stands down for the duration.
+    @State private var isZooming = false
+
     var body: some View {
         GeometryReader { proxy in
             RealityView { content in
@@ -30,15 +44,12 @@ struct Relief3DPreview: View {
                 // No `cameraTarget`: it frames the camera against the target's
                 // bounds at setup, and the mesh does not exist yet at that
                 // point, so it would park the camera inside the model. The mesh
-                // is normalised around the origin instead, which is what orbit
-                // falls back to pivoting on.
+                // is normalised around the origin instead, which is what the
+                // camera pivots on.
             }
-            .realityViewCameraControls(.orbit)
-            // Re-created only on the initial fit and on an explicit Reset: the
-            // orbit controller owns its pose internally, so a fresh view is the
-            // reliable way to make a new one stick. Deliberately *not* on every
-            // resize — see `frame(_:)` for what that costs.
-            .id(stage.generation)
+            // See the type's note: `.orbit` zooms far too hard for a plate this
+            // size and offers no gain to lower, so the camera is posed by hand.
+            .realityViewCameraControls(.none)
             .task(id: mesh?.id) { await stage.show(mesh) }
             .onChange(of: Framing(size: proxy.size, extent: mesh?.extent),
                       initial: true) { _, framing in
@@ -47,11 +58,41 @@ struct Relief3DPreview: View {
             .onChange(of: showsGrid, initial: true) { _, shows in
                 stage.showsGrid = shows
             }
+            .gesture(orbit)
+            .simultaneousGesture(dolly)
         }
         .overlay(alignment: .topLeading) { readout }
         .overlay(alignment: .topTrailing) { controls }
         .accessibilityLabel("3D preview")
         .accessibilityHint("Drag to orbit the model, pinch to zoom.")
+    }
+
+    private var orbit: some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { value in
+                defer { lastTranslation = value.translation }
+                guard !isZooming else { return }
+                stage.orbit(dx: Float(value.translation.width - lastTranslation.width),
+                            dy: Float(value.translation.height - lastTranslation.height))
+            }
+            .onEnded { _ in lastTranslation = .zero }
+    }
+
+    private var dolly: some Gesture {
+        MagnifyGesture()
+            .onChanged { value in
+                // A pinch that is cancelled rather than ended leaves the last
+                // reading stale, so the opening change of a new one seeds it
+                // rather than differencing against it.
+                guard isZooming else {
+                    isZooming = true
+                    lastMagnification = value.magnification
+                    return
+                }
+                stage.dolly(by: Float(value.magnification / lastMagnification))
+                lastMagnification = value.magnification
+            }
+            .onEnded { _ in isZooming = false }
     }
 
     @ViewBuilder
@@ -85,27 +126,18 @@ struct Relief3DPreview: View {
     @ViewBuilder
     private var controls: some View {
         if mesh != nil {
-            HStack(spacing: 8) {
-                Button {
-                    showsGrid.toggle()
-                } label: {
-                    Image(systemName: "square.grid.3x3")
-                        .font(.system(size: 15, weight: .medium))
-                }
-                .foregroundStyle(showsGrid ? Theme.Palette.workspaceLabel
-                                           : Theme.Palette.textTertiary)
-                .accessibilityLabel("Grid")
-                .accessibilityValue(showsGrid ? "On" : "Off")
-
-                Button {
-                    stage.resetView()
-                } label: {
-                    Image(systemName: "arrow.counterclockwise")
-                        .font(.system(size: 15, weight: .medium))
-                }
-                .foregroundStyle(Theme.Palette.workspaceLabel)
-                .accessibilityLabel("Reset view")
+            Button {
+                showsGrid.toggle()
+            } label: {
+                // The circle is drawn around the glyph, so the glyph's size is
+                // what sizes the button.
+                Image(systemName: "square.grid.3x3")
+                    .font(.system(size: 18, weight: .medium))
             }
+            .foregroundStyle(showsGrid ? Theme.Palette.workspaceLabel
+                                       : Theme.Palette.textTertiary)
+            .accessibilityLabel("Grid")
+            .accessibilityValue(showsGrid ? "On" : "Off")
             .buttonStyle(.bordered)
             .buttonBorderShape(.circle)
             .tint(Theme.Palette.workspaceControl)
@@ -153,20 +185,45 @@ final class ReliefStage {
         didSet { floor.isEnabled = showsGrid }
     }
 
-    /// Bumped to force `RealityView` to be re-created; see `resetView()`.
-    private(set) var generation = 0
-
     private let camera = PerspectiveCamera()
     private let material: PhysicallyBasedMaterial
     private var loaded: UUID?
-    /// Whether the camera has been fitted to the model once.
-    private var hasFramed = false
-    private var distance: Float = 0.4
+
+    /// The camera pose, in spherical coordinates about the origin: the arm
+    /// length that fits the plate to the viewport, the user's zoom riding on
+    /// top of it, and where they have turned the model to.
+    private var fitted: Float = 0.4
+    private var zoom: Float = 1
+    private var yaw = ReliefStage.homeYaw
+    private var pitch = ReliefStage.homePitch
 
     /// Straight-on with a little lift and offset: enough perspective to read
     /// the depth, close enough to head-on that the image is still legible.
     private static let homeDirection = simd_normalize(SIMD3<Float>(0.09, 0.10, 0.40))
+    private static let homeYaw = atan2(homeDirection.x, homeDirection.z)
+    private static let homePitch = asin(homeDirection.y)
     private static let fieldOfView: Float = 50
+
+    /// Pinch damping: the camera arm scales by `magnification ^ zoomResponse`.
+    /// At 1.0 — roughly what the built-in orbit control does — a pinch across
+    /// half the screen swallows the whole zoom range and the plate jumps from
+    /// filling the viewport to a speck. Below 1 the gesture has to travel
+    /// further for the same movement, which is what makes it steerable.
+    private static let zoomResponse: Float = 0.45
+
+    /// Radians of orbit per point of drag — a little over a third of a degree,
+    /// so a drag across a 300 pt viewport turns the model about a half-turn.
+    private static let orbitPerPoint: Float = 0.006
+
+    /// How far either side of the fitted distance the zoom may travel. Nearer
+    /// than `zoomNearest` the plate starts clipping through the near plane;
+    /// past `zoomFurthest` it is too small to judge anything by.
+    private static let zoomNearest: Float = 0.3
+    private static let zoomFurthest: Float = 4
+
+    /// Just short of the poles: overhead, the yaw axis collapses onto the view
+    /// direction and the model spins under a sideways drag.
+    private static let pitchLimit: Float = 85 * .pi / 180
 
     init() {
         var surface = PhysicallyBasedMaterial()
@@ -185,7 +242,7 @@ final class ReliefStage {
         material = surface
 
         camera.camera.fieldOfViewInDegrees = Self.fieldOfView
-        camera.look(at: .zero, from: Self.homeDirection * distance, relativeTo: nil)
+        aim()
 
         root.addChild(model)
         root.addChild(floor)
@@ -239,38 +296,43 @@ final class ReliefStage {
         // off the back plate toward the camera.
         let wanted = max(vertical, horizontal) * 1.25 + extent.z / 2
 
-        guard abs(wanted - distance) > 0.001 else { return }
-        distance = wanted
+        guard abs(wanted - fitted) > 0.001 else { return }
+        fitted = wanted
+        // The zoom multiplies the new fit rather than being cleared by it, so a
+        // resize — collapsing the sidebar re-fits the plate — keeps the user
+        // where they had pinched to instead of snapping back out.
         aim()
-
-        // Only the *first* framing may re-create the view.
-        //
-        // `proxy.size` changes on every frame of a resize animation — collapsing
-        // the sidebar is 0.28 s, so roughly seventeen of them — and re-creating
-        // the RealityView each time stands up seventeen CAMetalLayers before the
-        // first is released. The drawable pool runs dry and Metal starts
-        // answering `nextDrawable` with nil. After the initial fit the camera
-        // simply moves; the view stays where it is.
-        if !hasFramed {
-            hasFramed = true
-            generation += 1
-        }
     }
 
-    /// Puts the camera back where it started. The orbit controller keeps its
-    /// own pose, so restoring the entity transform is only half of it — the
-    /// view has to be re-created for the controller to pick the pose back up.
+    /// Turns the camera around the model.
     ///
-    /// This is the one gesture that earns a rebuild, because it is the one the
-    /// person explicitly asked for.
-    func resetView() {
+    /// The signs are the turntable convention: the model follows the finger, so
+    /// dragging right swings the camera the other way around it.
+    func orbit(dx: Float, dy: Float) {
+        yaw -= dx * Self.orbitPerPoint
+        pitch = min(max(pitch + dy * Self.orbitPerPoint, -Self.pitchLimit),
+                    Self.pitchLimit)
         aim()
-        generation += 1
+    }
+
+    /// Dollies by one step of a pinch, damped by `zoomResponse`.
+    func dolly(by step: Float) {
+        guard step > 0, step.isFinite else { return }
+        // Pinching out enlarges the model, which is a *shorter* camera arm —
+        // hence the divide. Raising each incremental step to the exponent
+        // compounds to exactly the same damping as raising the gesture's total
+        // would, so how finely SwiftUI slices the pinch up does not matter.
+        zoom = min(max(zoom / pow(step, Self.zoomResponse), Self.zoomNearest),
+                   Self.zoomFurthest)
+        aim()
     }
 
     /// Moves the camera. Nothing else.
     private func aim() {
-        camera.look(at: .zero, from: Self.homeDirection * distance, relativeTo: nil)
+        let direction = SIMD3<Float>(sin(yaw) * cos(pitch),
+                                     sin(pitch),
+                                     cos(yaw) * cos(pitch))
+        camera.look(at: .zero, from: direction * (fitted * zoom), relativeTo: nil)
     }
 
     /// A three-point rig with the key deliberately raking across the surface.
