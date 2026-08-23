@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct _DConverterAppApp: App {
+struct TacturaApp: App {
     @State private var appState = AppState()
     @State private var dependencies = AppDependencies()
 

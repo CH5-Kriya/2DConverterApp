@@ -29,9 +29,9 @@ DerivedData/
 # Regenerate with:
 #   conda run -n coreml python scripts/convert_coreml.py --shapes multifunction
 # then copy the .mlpackage and out/coreml/pos_embed/base_1x1370x1024.f32 into
-# 2DConverterApp/Resources/.
-2DConverterApp/Resources/*.mlpackage/
-2DConverterApp/Resources/*.f32
+# Tactura/Resources/.
+Tactura/Resources/*.mlpackage/
+Tactura/Resources/*.f32
 
 # SwiftPM build products
 ReliefKit/.build/

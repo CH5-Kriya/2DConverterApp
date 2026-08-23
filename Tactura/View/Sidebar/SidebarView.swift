@@ -72,18 +72,21 @@ struct SidebarView: View {
     }
 }
 
+/// The app icon, reused as the in-app mark.
+///
+/// Clipped to the squircle ratio iOS uses for icons. The artwork already
+/// carries rounded corners, but it ships without an alpha channel, so the
+/// pixels outside them are opaque filler that would otherwise read as a pale
+/// square against the dark sidebar.
 struct AppMarkView: View {
     var body: some View {
-        Image(systemName: "cube.fill")
-            .resizable()
-            .aspectRatio(contentMode: .fit)
-            .foregroundStyle(
-                LinearGradient(
-                    colors: [.white, Color(hex: 0x8E8E8E)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
+        GeometryReader { proxy in
+            Image("AppMark")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .clipShape(RoundedRectangle(cornerRadius: proxy.size.width * 0.2237,
+                                            style: .continuous))
+        }
     }
 }
 

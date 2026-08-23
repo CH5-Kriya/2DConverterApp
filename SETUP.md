@@ -46,12 +46,12 @@ ls ReliefKit/Package.swift ReliefKit/Frameworks/opencv2.xcframework
 
 ## 3. Add the depth model
 
-Two artifacts go into `2DConverterApp/Resources/`. **Both are required.** The
+Two artifacts go into `Tactura/Resources/`. **Both are required.** The
 loader needs the model *and* the position-embedding grid, and gives up if either
 is absent.
 
 ```
-2DConverterApp/Resources/
+Tactura/Resources/
 ├── base_1x1370x1024.f32                        5.4 MB
 └── dav2_large_multifunction_f16.mlpackage/    640 MB
     ├── Manifest.json
@@ -67,9 +67,9 @@ recursively and keep the extension intact:
 
 ```sh
 rsync -a --progress \
-  "<source>/2DConverterApp/Resources/dav2_large_multifunction_f16.mlpackage" \
-  "<source>/2DConverterApp/Resources/base_1x1370x1024.f32" \
-  2DConverterApp/Resources/
+  "<source>/Tactura/Resources/dav2_large_multifunction_f16.mlpackage" \
+  "<source>/Tactura/Resources/base_1x1370x1024.f32" \
+  Tactura/Resources/
 ```
 
 **Or regenerate from the Python repo:**
@@ -79,14 +79,14 @@ conda run -n coreml python scripts/convert_coreml.py --shapes multifunction
 ```
 
 then copy the resulting `.mlpackage` and `out/coreml/pos_embed/base_1x1370x1024.f32`
-into `2DConverterApp/Resources/`.
+into `Tactura/Resources/`.
 
 Verify the transfer — a truncated `weight.bin` fails at *prediction* time, not at
 load time, which is a confusing way to find out:
 
 ```sh
-shasum -a 256 2DConverterApp/Resources/base_1x1370x1024.f32 \
-  2DConverterApp/Resources/dav2_large_multifunction_f16.mlpackage/Data/com.apple.CoreML/{model.mlmodel,weights/weight.bin}
+shasum -a 256 Tactura/Resources/base_1x1370x1024.f32 \
+  Tactura/Resources/dav2_large_multifunction_f16.mlpackage/Data/com.apple.CoreML/{model.mlmodel,weights/weight.bin}
 ```
 
 ```
@@ -107,7 +107,7 @@ into the navigator creates a duplicate reference instead. Xcode compiles the
 ## 4. Set your signing team
 
 `project.pbxproj` hardcodes the original developer team, so signing fails on any
-other account. In Xcode: **target 2DConverterApp → Signing & Capabilities**
+other account. In Xcode: **target Tactura → Signing & Capabilities**
 
 - **Team** — your own.
 - **Bundle Identifier** — change it if `com.elliezer.kriya.-DConverterApp` is
@@ -119,7 +119,7 @@ whole team is moving to one account — it churns the project file on every clon
 ## 5. Build and run
 
 ```sh
-open 2DConverterApp.xcodeproj
+open Tactura.xcodeproj
 ```
 
 Wait for **Package Resolution** to finish (`ReliefKit` is a local package; it is
@@ -172,7 +172,7 @@ swift test
 absolute paths from the original machine, e.g.
 
 ```swift
-let res = URL(fileURLWithPath: "/Users/elliezer/Documents/Projects/Challenge 5/ios-app/2DConverterApp/2DConverterApp/Resources")
+let res = URL(fileURLWithPath: "/Users/elliezer/Documents/Projects/Challenge 5/ios-app/2DConverterApp/Tactura/Resources")
 ```
 
 Edit them to your own paths, and note they also expect the Python repo's
@@ -231,7 +231,7 @@ a physical iPad to judge speed or output quality.
 package cannot resolve and a clone would not build at all. Every file is under
 GitHub's 100 MB limit. Rebuild recipe: `ReliefKit/Frameworks/BUILD_OPENCV.md`.
 
-**Not committed:** `2DConverterApp/Resources/*.mlpackage/` and
-`2DConverterApp/Resources/*.f32`. The weights alone are 635 MB, well past
+**Not committed:** `Tactura/Resources/*.mlpackage/` and
+`Tactura/Resources/*.f32`. The weights alone are 635 MB, well past
 GitHub's limit, and the model is CC-BY-NC-4.0 — fine for research and TestFlight,
 not something to redistribute through this repository.

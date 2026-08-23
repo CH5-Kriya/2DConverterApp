@@ -11,13 +11,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		C4F443333029560B002E287E /* 2DConverterApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = 2DConverterApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C4F443333029560B002E287E /* Tactura.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tactura.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		C4F443353029560B002E287E /* 2DConverterApp */ = {
+		C4F443353029560B002E287E /* Tactura */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = 2DConverterApp;
+			path = Tactura;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -37,7 +37,7 @@
 		C4F4432A3029560B002E287E = {
 			isa = PBXGroup;
 			children = (
-				C4F443353029560B002E287E /* 2DConverterApp */,
+				C4F443353029560B002E287E /* Tactura */,
 				C4F443343029560B002E287E /* Products */,
 			);
 			sourceTree = "<group>";
@@ -45,7 +45,7 @@
 		C4F443343029560B002E287E /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				C4F443333029560B002E287E /* 2DConverterApp.app */,
+				C4F443333029560B002E287E /* Tactura.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -53,9 +53,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		C4F443323029560B002E287E /* 2DConverterApp */ = {
+		C4F443323029560B002E287E /* Tactura */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = C4F4433E3029560B002E287E /* Build configuration list for PBXNativeTarget "2DConverterApp" */;
+			buildConfigurationList = C4F4433E3029560B002E287E /* Build configuration list for PBXNativeTarget "Tactura" */;
 			buildPhases = (
 				C4F4432F3029560B002E287E /* Sources */,
 				C4F443303029560B002E287E /* Frameworks */,
@@ -66,14 +66,14 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				C4F443353029560B002E287E /* 2DConverterApp */,
+				C4F443353029560B002E287E /* Tactura */,
 			);
-			name = 2DConverterApp;
+			name = Tactura;
 			packageProductDependencies = (
 				AA11111111111111111111A2 /* ReliefCore */,
 			);
-			productName = 2DConverterApp;
-			productReference = C4F443333029560B002E287E /* 2DConverterApp.app */;
+			productName = Tactura;
+			productReference = C4F443333029560B002E287E /* Tactura.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -91,7 +91,7 @@
 					};
 				};
 			};
-			buildConfigurationList = C4F4432E3029560B002E287E /* Build configuration list for PBXProject "2DConverterApp" */;
+			buildConfigurationList = C4F4432E3029560B002E287E /* Build configuration list for PBXProject "Tactura" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -108,7 +108,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				C4F443323029560B002E287E /* 2DConverterApp */,
+				C4F443323029560B002E287E /* Tactura */,
 			);
 		};
 /* End PBXProject section */
@@ -326,7 +326,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		C4F4432E3029560B002E287E /* Build configuration list for PBXProject "2DConverterApp" */ = {
+		C4F4432E3029560B002E287E /* Build configuration list for PBXProject "Tactura" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C4F4433C3029560B002E287E /* Debug */,
@@ -335,7 +335,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		C4F4433E3029560B002E287E /* Build configuration list for PBXNativeTarget "2DConverterApp" */ = {
+		C4F4433E3029560B002E287E /* Build configuration list for PBXNativeTarget "Tactura" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C4F4433F3029560B002E287E /* Debug */,

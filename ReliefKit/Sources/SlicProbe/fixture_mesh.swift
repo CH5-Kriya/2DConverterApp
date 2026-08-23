@@ -13,7 +13,7 @@ func meshFromFixtureInput() {
     var config = f.manifest.config
     config.mesh.reliefMm = 30
 
-    let res = URL(fileURLWithPath: "/Users/elliezer/Documents/Projects/Challenge 5/ios-app/2DConverterApp/2DConverterApp/Resources")
+    let res = URL(fileURLWithPath: "/Users/elliezer/Documents/Projects/Challenge 5/ios-app/2DConverterApp/Tactura/Resources")
     var backend: DepthBackend = ClassicalLayersBackend()
     if let pe = PositionEmbedding(contentsOf: res.appendingPathComponent("base_1x1370x1024.f32")) {
         backend = CoreMLDepthBackend(
