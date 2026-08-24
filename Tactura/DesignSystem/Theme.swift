@@ -18,6 +18,8 @@ enum Theme {
         /// Sits *under* the canvas rather than over it. Search fields and
         /// segmented controls read as recesses, not raised chips.
         static let controlFill = Color(hex: 0x0B0B0B)
+        /// The warm near-black behind a chosen rail item or a step's icon tile.
+        static let selectedFill = Color(hex: 0x242322)
         static let surfaceSelected = Color(hex: 0x2C2C2C)
         static let separator = Color.white.opacity(0.08)
         static let border = Color.white.opacity(0.35)
