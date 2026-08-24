@@ -61,10 +61,15 @@ enum Theme {
 
     enum Metrics {
         static let sidebarWidth: CGFloat = 300
-        static let sidebarRailWidth: CGFloat = 140
-        static let sidebarRowHeight: CGFloat = 60
-        static let sidebarRailItemSize: CGFloat = 68
+        /// 87, measured off the component: a 52 pt item with 17.5 pt either
+        /// side. Sized by the target it holds, not by the glyph inside it.
+        static let sidebarRailWidth: CGFloat = 87
+        /// One height for both sidebar states. Collapsing must not move a
+        /// single icon vertically -- only the labels leave.
+        static let sidebarRowHeight: CGFloat = 52
+        static let sidebarRailItemSize: CGFloat = 52
         static let sidebarRowRadius: CGFloat = 14
+        static let sidebarRailItemRadius: CGFloat = 10
 
         static let contentPadding: CGFloat = 64
         static let cardRadius: CGFloat = 18
@@ -74,7 +79,6 @@ enum Theme {
         static let buttonHeight: CGFloat = 68
         static let buttonWidth: CGFloat = 320
 
-        static let sidebarAnimation: Animation = .snappy(duration: 0.28)
 
         static let workspacePanelWidth: CGFloat = 286
         static let workspacePanelRadius: CGFloat = 16
