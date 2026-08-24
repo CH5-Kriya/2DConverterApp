@@ -41,6 +41,7 @@ struct SidebarItemLabel: View {
                 }
                 .padding(.horizontal, 20)
                 .frame(height: Theme.Metrics.sidebarRowHeight)
+                .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 icon
                     .frame(width: Theme.Metrics.sidebarRailItemSize,
@@ -48,11 +49,16 @@ struct SidebarItemLabel: View {
                     .frame(maxWidth: .infinity)
             }
         }
-        .foregroundStyle(Theme.Palette.textPrimary)
+        // Unselected items step back rather than all reading as current. In the
+        // rail there is no label to carry the distinction, so colour is the
+        // only thing left to carry it.
+        .foregroundStyle(isSelected ? Theme.Palette.white : Theme.Palette.textInactive)
         .background {
-            RoundedRectangle(cornerRadius: Theme.Metrics.sidebarRowRadius,
+            RoundedRectangle(cornerRadius: isExpanded
+                             ? Theme.Metrics.sidebarRowRadius
+                             : Theme.Metrics.sidebarRailItemRadius,
                              style: .continuous)
-                .fill(isSelected ? Theme.Palette.surfaceSelected : .clear)
+                .fill(isSelected ? Theme.Palette.selectedFill : .clear)
                 .frame(width: isExpanded ? nil : Theme.Metrics.sidebarRailItemSize,
                        height: isExpanded ? nil : Theme.Metrics.sidebarRailItemSize)
         }
@@ -62,7 +68,7 @@ struct SidebarItemLabel: View {
 
     private var icon: some View {
         Image(systemName: systemImage)
-            .font(.system(size: 22, weight: .medium))
+            .font(.system(size: 20, weight: .medium))
             .frame(width: 28)
     }
 }

@@ -48,28 +48,30 @@ struct ScanListRow: View {
     let project: Project
 
     var body: some View {
-        HStack(spacing: 26) {
-            ScanThumbnail(project: project, cornerRadius: 10)
-                .frame(width: 76, height: 76)
+        HStack(spacing: 32) {
+            ScanThumbnail(project: project, cornerRadius: 11)
+                .frame(width: 72, height: 72)
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 12) {
                 Text(project.name)
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(Theme.Palette.textPrimary)
+                    .font(Theme.Typography.scanRowTitle)
+                    .foregroundStyle(Theme.Palette.white)
                     .lineLimit(1)
 
                 Text(scanDateText(project.createdAt))
-                    .font(Theme.Typography.caption)
-                    .foregroundStyle(Theme.Palette.textSecondary)
+                    .font(Theme.Typography.subheadline)
+                    .foregroundStyle(Theme.Palette.textInactive)
+                    .lineLimit(1)
             }
-
-            Spacer(minLength: 16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .layoutPriority(1)
 
             Image(systemName: "chevron.right")
-                .font(.system(size: 21, weight: .medium))
-                .foregroundStyle(Theme.Palette.textPrimary)
+                .font(.system(size: 26, weight: .light))
+                .foregroundStyle(Theme.Palette.textInactive)
+                .frame(width: 40, height: 40)
         }
-        .padding(.vertical, 14)
+        .frame(height: 72)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(project.name), \(scanDateText(project.createdAt))")
@@ -82,26 +84,30 @@ struct ScanGridCard: View {
     let project: Project
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            ScanThumbnail(project: project, cornerRadius: 12)
-                .aspectRatio(1, contentMode: .fit)
+        VStack(alignment: .leading, spacing: 20) {
+            // A fixed height, not a square. The design gives every card the
+            // same 220 pt window whatever shape the artwork is, which is what
+            // keeps a row of them level.
+            ScanThumbnail(project: project, cornerRadius: 9)
+                .frame(height: 220)
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 8) {
                 Text(project.name)
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(Theme.Palette.textPrimary)
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(Theme.Palette.white)
                     .lineLimit(1)
+                    .truncationMode(.tail)
 
                 Text(scanDateText(project.createdAt))
-                    .font(.system(size: 13))
-                    .foregroundStyle(Theme.Palette.textSecondary)
+                    .font(Theme.Typography.subheadline)
+                    .foregroundStyle(Theme.Palette.textInactive)
             }
-            .padding(.bottom, 2)
         }
-        .padding(14)
-        .background(Theme.Palette.surface,
-                    in: RoundedRectangle(cornerRadius: Theme.Metrics.cardRadius,
-                                         style: .continuous))
+        .padding(.horizontal, 16)
+        .padding(.vertical, 20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.Palette.elevatedFill,
+                    in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(project.name), \(scanDateText(project.createdAt))")
     }

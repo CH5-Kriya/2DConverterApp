@@ -14,7 +14,7 @@ enum ScanLayout: String, CaseIterable, Identifiable {
 
     var icon: String {
         switch self {
-        case .grid: "square.grid.2x2.fill"
+        case .grid: "square.grid.2x2"
         case .list: "list.bullet"
         }
     }
@@ -35,22 +35,28 @@ struct ScanLayoutToggle: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            ForEach(ScanLayout.allCases) { option in
+            ForEach(Array(ScanLayout.allCases.enumerated()), id: \.element) { index, option in
+                if index > 0 {
+                    Rectangle()
+                        .fill(Theme.Palette.white.opacity(0.3))
+                        .frame(width: 1)
+                }
+
                 Button {
                     layout = option
                 } label: {
                     Image(systemName: option.icon)
-                        .font(.system(size: 18, weight: .medium))
+                        .font(.system(size: 16, weight: .medium))
+                        // The selected half inverts rather than tints: at this
+                        // size a fill change is the only state cue that survives
+                        // being glanced at.
                         .foregroundStyle(layout == option
-                                         ? Theme.Palette.textPrimary
-                                         : Theme.Palette.textSecondary)
-                        .frame(width: 56, height: 44)
-                        .background {
-                            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                .fill(layout == option
-                                      ? Theme.Palette.surfaceSelected
-                                      : .clear)
-                        }
+                                         ? Theme.Palette.controlFill
+                                         : Theme.Palette.white)
+                        .frame(width: 58, height: 42)
+                        .background(layout == option
+                                    ? Theme.Palette.white
+                                    : Theme.Palette.controlFill)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -58,11 +64,13 @@ struct ScanLayoutToggle: View {
                 .accessibilityAddTraits(layout == option ? [.isSelected] : [])
             }
         }
-        .padding(3)
-        .background {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(Theme.Palette.separator, lineWidth: 1)
+        .frame(height: 42)
+        .background(Theme.Palette.controlFill)
+        .overlay {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .strokeBorder(Theme.Palette.white, lineWidth: 0.3)
         }
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         .animation(.easeOut(duration: 0.15), value: layout)
     }
 }
@@ -74,55 +82,39 @@ struct ScanSearchField: View {
     @FocusState private var focused: Bool
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 16) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(Theme.Palette.textSecondary)
+                .font(.system(size: 14, weight: .medium))
 
             TextField("Search project", text: $query)
                 .textFieldStyle(.plain)
-                .font(Theme.Typography.caption)
-                .foregroundStyle(Theme.Palette.textPrimary)
+                .font(Theme.Typography.meta)
                 .focused($focused)
                 .submitLabel(.search)
 
             if !query.isEmpty {
                 Button {
                     query = ""
-                    focused = true
+                    focused = false
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 15))
-                        .foregroundStyle(Theme.Palette.textTertiary)
+                        .font(.system(size: 14))
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Clear search")
             }
         }
-        .padding(.horizontal, 16)
-        // Flexible rather than fixed: in portrait the sidebar leaves too little
-        // room for the full width, and shrinking the field is a better trade
-        // than squeezing the page title.
-        .frame(minWidth: 150, idealWidth: 240, maxWidth: 240)
-        .frame(height: 50)
-        .background {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(focused ? Theme.Palette.border : Theme.Palette.separator,
-                              lineWidth: 1)
+        // One dimming for the whole row, lifted once there is something to
+        // read: an empty field is a prompt, a filled one is content.
+        .foregroundStyle(Theme.Palette.white.opacity(query.isEmpty && !focused ? 0.44 : 1))
+        .padding(.horizontal, 12)
+        .frame(width: 190, height: 42)
+        .background(Theme.Palette.controlFill)
+        .overlay {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .strokeBorder(Theme.Palette.white, lineWidth: 0.3)
         }
-        .animation(.easeOut(duration: 0.15), value: focused)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
-#Preview {
-    @Previewable @State var layout: ScanLayout = .list
-    @Previewable @State var query = ""
-
-    HStack(spacing: 20) {
-        ScanLayoutToggle(layout: $layout)
-        ScanSearchField(query: $query)
-    }
-    .padding(40)
-    .background(Theme.Palette.canvas)
-    .preferredColorScheme(.dark)
-}

@@ -56,7 +56,9 @@ struct CreateProjectDialog: View {
     }
 
     private var scrim: some View {
-        Color.black.opacity(0.62)
+        // The canvas colour at 80%, not black: the design dims the screen
+        // rather than draining it, so the home behind stays recognisable.
+        Theme.Palette.canvas.opacity(0.8)
             .ignoresSafeArea()
             .onTapGesture { appState.isPresentingNewProject = false }
             .accessibilityLabel("Dismiss")
@@ -66,19 +68,19 @@ struct CreateProjectDialog: View {
     private var card: some View {
         VStack(spacing: 0) {
             Text("Create new project")
-                .font(Theme.Typography.title)
+                .font(Theme.Typography.dialogTitle)
                 .foregroundStyle(Theme.Palette.textPrimary)
 
-            Text("Choose how you'll like to add your 2D Artwork")
-                .font(Theme.Typography.body)
-                .foregroundStyle(Theme.Palette.textSecondary)
+            Text("Choose how you want to add your artwork and get started")
+                .font(Theme.Typography.subheadline)
+                .foregroundStyle(Theme.Palette.textInactive)
                 .padding(.top, 12)
 
-            HStack(spacing: 47) {
+            HStack(spacing: 42) {
                 CreateOptionCard(
-                    systemImage: "doc.viewfinder",
+                    systemImage: "camera.viewfinder",
                     title: "Scan Artwork",
-                    caption: "Use your camera to scan the project",
+                    caption: "Scan an artwork with your camera",
                     isEnabled: !model.isImporting
                 ) {
                     model.isPresentingCamera = true
@@ -87,13 +89,13 @@ struct CreateProjectDialog: View {
                 CreateOptionCard(
                     systemImage: "photo.badge.plus",
                     title: "Import Artwork",
-                    caption: "Import your project from gallery",
+                    caption: "Choose an artwork from your gallery",
                     isEnabled: !model.isImporting
                 ) {
                     model.isPresentingPicker = true
                 }
             }
-            .padding(.top, 44)
+            .padding(.top, 43)
             .overlay {
                 if model.isImporting {
                     ProgressView()
@@ -101,14 +103,17 @@ struct CreateProjectDialog: View {
                 }
             }
         }
-        .padding(.horizontal, 39)
-        .padding(.top, 40)
-        .padding(.bottom, 33)
-        .frame(width: 661)
-        .background(
-            Theme.Palette.surface,
-            in: RoundedRectangle(cornerRadius: 28, style: .continuous)
-        )
+        .multilineTextAlignment(.center)
+        .padding(.top, 37)
+        .frame(width: 663, height: 448, alignment: .top)
+        .background(Theme.Palette.cardFill)
+        // A hairline rather than a border: it separates the dialog from the
+        // dimmed screen behind without reading as a frame around it.
+        .overlay {
+            RoundedRectangle(cornerRadius: 20.5, style: .continuous)
+                .strokeBorder(Theme.Palette.white, lineWidth: 0.3)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 20.5, style: .continuous))
         .accessibilityAddTraits(.isModal)
     }
 }
@@ -122,33 +127,32 @@ private struct CreateOptionCard: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 0) {
-                Spacer(minLength: 0)
+            VStack(spacing: 18) {
                 Image(systemName: systemImage)
-                    .font(.system(size: 66, weight: .regular))
-                    .foregroundStyle(Theme.Palette.textPrimary)
-                Spacer(minLength: 24)
-                Text(title)
-                    .font(.system(size: 24, weight: .semibold))
-                    .foregroundStyle(Theme.Palette.textPrimary)
-                Text(caption)
-                    .font(.system(size: 14))
-                    .foregroundStyle(Theme.Palette.textSecondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
-                    .padding(.top, 6)
-                Spacer(minLength: 0)
+                    .font(.system(size: 72, weight: .regular))
+                    .foregroundStyle(Theme.Palette.white)
+
+                VStack(spacing: 6) {
+                    Text(title)
+                        .font(Theme.Typography.listTitle)
+                        .foregroundStyle(Theme.Palette.textPrimary)
+
+                    Text(caption)
+                        .font(Theme.Typography.footnote)
+                        .foregroundStyle(Theme.Palette.textInactive)
+                }
             }
-            .padding(14)
-            .frame(width: 268, height: 272)
-            .background {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Theme.Palette.canvas)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .strokeBorder(Theme.Palette.border, lineWidth: 1.5)
-                    }
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 27)
+            // The card carries the same fill as the dialog it sits in; only
+            // the hairline says where one ends and the other begins.
+            .frame(width: 270, height: 270)
+            .background(Theme.Palette.cardFill)
+            .overlay {
+                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                    .strokeBorder(Theme.Palette.white, lineWidth: 0.3)
             }
+            .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

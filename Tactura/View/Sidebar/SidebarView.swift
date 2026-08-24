@@ -10,9 +10,9 @@ struct SidebarView: View {
             wordmark
                 .padding(.horizontal, isExpanded ? 28 : 0)
                 .frame(maxWidth: .infinity, alignment: isExpanded ? .leading : .center)
-                .padding(.top, 44)
+                .padding(.top, 55)
 
-            VStack(spacing: 6) {
+            VStack(spacing: 14) {
                 ForEach(AppRoute.allCases) { route in
                     SidebarRow(
                         route: route,
@@ -24,13 +24,18 @@ struct SidebarView: View {
                 }
             }
             .padding(.horizontal, isExpanded ? 16 : 0)
-            .padding(.top, 56)
+            .padding(.top, 100)
 
             Spacer(minLength: 24)
 
             toggleButton
                 .padding(.horizontal, isExpanded ? 16 : 0)
-                .padding(.bottom, 32)
+                .padding(.bottom, 55)
+                // Opts out of the collapse animation the rest of the sidebar
+                // runs. Its label is the widest thing in the column, so
+                // animating it drags a stretching "Hide Menu" across the whole
+                // transition; snapping puts it out of the way at once.
+                .animation(nil, value: isExpanded)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .background(Theme.Palette.sidebar)
@@ -44,7 +49,7 @@ struct SidebarView: View {
     private var wordmark: some View {
         HStack(spacing: 14) {
             AppMarkView()
-                .frame(width: 40, height: 40)
+                .frame(width: 32, height: 32)
             if isExpanded {
                 Text("Tactura")
                     .font(Theme.Typography.wordmark)
