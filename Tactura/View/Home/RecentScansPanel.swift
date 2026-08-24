@@ -91,7 +91,7 @@ private struct RecentScanRow: View {
 
     private var thumbnail: some View {
         RoundedRectangle(cornerRadius: 10, style: .continuous)
-            .fill(Theme.Palette.thumbnailFill)
+            .fill(Theme.Palette.elevatedFill)
             .frame(width: 68, height: 68)
             .overlay {
                 if let data = project.thumbnail, let image = UIImage(data: data) {

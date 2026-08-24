@@ -6,10 +6,9 @@ struct MyScansView: View {
     /// A standing preference, not a per-visit one — see `ScanLayout`.
     @AppStorage("myScansLayout") private var layout: ScanLayout = .list
 
-    /// 220, not 240. In landscape the content area is 766 pt wide, and three
-    /// columns at a 240 minimum need 768 — two points short, which silently
-    /// drops the grid to two columns. The mock is three.
-    private let columns = [GridItem(.adaptive(minimum: 220, maximum: 320), spacing: 24)]
+    /// Three across, as the design draws it. The minimum stays low enough that
+    /// the count survives a narrower window rather than dropping to two.
+    private let columns = [GridItem(.adaptive(minimum: 220, maximum: 340), spacing: 24)]
 
     init(dependencies: AppDependencies) {
         _model = State(initialValue: MyScansViewModel(dependencies: dependencies))
@@ -18,15 +17,31 @@ struct MyScansView: View {
     var body: some View {
         @Bindable var model = model
 
-        ScreenScaffold(title: "My Scans", subtitle: model.countLabel) {
-            content
-        } accessory: {
-            HStack(spacing: 20) {
-                ScanLayoutToggle(layout: $layout)
-                ScanSearchField(query: $model.query)
+        ScreenScaffold(title: "My Scans",
+                       subtitle: "Find all of your scanned artworks here") {
+            VStack(alignment: .leading, spacing: 24) {
+                controls
+                content
             }
         }
         .task { await model.load() }
+    }
+
+    private var controls: some View {
+        @Bindable var model = model
+
+        return HStack(alignment: .center, spacing: 18) {
+            Text("Search projects")
+                .font(Theme.Typography.sectionTitle)
+                .foregroundStyle(Theme.Palette.white)
+                .fixedSize(horizontal: true, vertical: false)
+                .layoutPriority(1)
+
+            Spacer(minLength: 16)
+
+            ScanLayoutToggle(layout: $layout)
+            ScanSearchField(query: $model.query)
+        }
     }
 
     @ViewBuilder
@@ -58,7 +73,7 @@ struct MyScansView: View {
     }
 
     private var list: some View {
-        LazyVStack(spacing: 0) {
+        LazyVStack(spacing: 32) {
             ForEach(model.visible) { project in
                 link(project) { ScanListRow(project: project) }
             }

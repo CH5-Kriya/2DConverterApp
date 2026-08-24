@@ -1,52 +1,38 @@
 import SwiftUI
 
-/// Shared page chrome: a title, optional trailing accessory, and the content
-/// inset to the same margin the home screen uses.
-struct ScreenScaffold<Content: View, Accessory: View>: View {
+/// Shared page chrome: the page's name and what it holds, a rule, and the
+/// content below it. Controls belong to the content, not to the heading — the
+/// v2 design gives each screen its own row for them under the rule.
+struct ScreenScaffold<Content: View>: View {
     let title: String
     var subtitle: String?
     @ViewBuilder var content: () -> Content
-    @ViewBuilder var accessory: () -> Accessory
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(title)
-                        .font(Theme.Typography.title)
-                        .foregroundStyle(Theme.Palette.textPrimary)
-                    if let subtitle {
-                        Text(subtitle)
-                            .font(Theme.Typography.caption)
-                            .foregroundStyle(Theme.Palette.textSecondary)
-                    }
-                }
-                // The title owns its width. Without this the accessory — which
-                // can be a whole row of controls — compresses the heading until
-                // it wraps one letter per line, which is how it looked before.
-                .fixedSize(horizontal: true, vertical: false)
-                .layoutPriority(1)
+        VStack(alignment: .leading, spacing: 36) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(title)
+                    .font(Theme.Typography.largeTitle)
+                    .foregroundStyle(Theme.Palette.textPrimary)
 
-                Spacer(minLength: 16)
-                accessory()
+                if let subtitle {
+                    Text(subtitle)
+                        .font(Theme.Typography.body)
+                        .foregroundStyle(Theme.Palette.textSecondary)
+                }
             }
-            .padding(.top, 56)
+
+            Rectangle()
+                .fill(Theme.Palette.separator)
+                .frame(height: 1)
 
             content()
-                .padding(.top, 36)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .padding(.horizontal, Theme.Metrics.contentPadding)
+        .padding(.top, 56)
         .padding(.bottom, 32)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    }
-}
-
-extension ScreenScaffold where Accessory == EmptyView {
-    init(title: String,
-         subtitle: String? = nil,
-         @ViewBuilder content: @escaping () -> Content) {
-        self.init(title: title, subtitle: subtitle, content: content) { EmptyView() }
     }
 }
 

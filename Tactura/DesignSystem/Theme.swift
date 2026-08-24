@@ -12,7 +12,12 @@ enum Theme {
         /// content dropped into the panel rather than raised off it.
         static let cardFill = Color(hex: 0x161616)
         static let panelFill = Color(hex: 0x0D0D0D)
-        static let thumbnailFill = Color(hex: 0x292929)
+        /// The plate a scan sits on, whether that is a 72 pt thumbnail in a
+        /// row or the whole body of a grid card.
+        static let elevatedFill = Color(hex: 0x292929)
+        /// Sits *under* the canvas rather than over it. Search fields and
+        /// segmented controls read as recesses, not raised chips.
+        static let controlFill = Color(hex: 0x0B0B0B)
         static let surfaceSelected = Color(hex: 0x2C2C2C)
         static let separator = Color.white.opacity(0.08)
         static let border = Color.white.opacity(0.35)
@@ -47,7 +52,7 @@ enum Theme {
         // whole point of the preview.
         static let workspaceCanvas = Color(hex: 0x2A2A2A)
         static let workspacePanel = Color(hex: 0x0D0D0D)
-        static let workspaceControl = Color(hex: 0x0B0B0B)
+        static let workspaceControl = controlFill
         static let workspaceStroke = Color.white.opacity(0.5)
         static let workspaceLabel = white
     }
@@ -84,6 +89,11 @@ enum Theme {
         static let panelTitle = Font.system(size: 20, weight: .semibold)
         static let listTitle = Font.system(size: 18, weight: .semibold)
         static let link = Font.system(size: 18, weight: .regular)
+        static let dialogTitle = Font.system(size: 28, weight: .semibold)
+        static let sectionTitle = Font.system(size: 28, weight: .medium)
+        static let scanRowTitle = Font.system(size: 24, weight: .medium)
+        static let subheadline = Font.system(size: 16, weight: .regular)
+        static let footnote = Font.system(size: 12, weight: .regular)
         static let meta = Font.system(size: 14, weight: .regular)
         static let heading = Font.system(size: 26, weight: .semibold)
         static let wordmark = Font.system(size: 28, weight: .bold)
