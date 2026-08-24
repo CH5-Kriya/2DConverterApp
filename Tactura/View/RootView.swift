@@ -15,6 +15,7 @@ struct RootView: View {
         }
         .background(Theme.Palette.canvas)
         .preferredColorScheme(.dark)
+        .animation(Theme.Metrics.sidebarAnimation, value: appState.isSidebarExpanded)
         .animation(.snappy(duration: 0.22), value: appState.isPresentingNewProject)
     }
 

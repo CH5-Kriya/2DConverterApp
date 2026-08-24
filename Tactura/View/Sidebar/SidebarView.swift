@@ -31,6 +31,11 @@ struct SidebarView: View {
             toggleButton
                 .padding(.horizontal, isExpanded ? 16 : 0)
                 .padding(.bottom, 55)
+                // Opts out of the collapse animation the rest of the sidebar
+                // runs. Its label is the widest thing in the column, so
+                // animating it drags a stretching "Hide Menu" across the whole
+                // transition; snapping puts it out of the way at once.
+                .animation(nil, value: isExpanded)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .background(Theme.Palette.sidebar)

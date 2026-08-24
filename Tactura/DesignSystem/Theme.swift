@@ -80,6 +80,8 @@ enum Theme {
         static let buttonWidth: CGFloat = 320
 
 
+        static let sidebarAnimation: Animation = .snappy(duration: 0.28)
+
         static let workspacePanelWidth: CGFloat = 286
         static let workspacePanelRadius: CGFloat = 16
         static let workspaceControlRadius: CGFloat = 12
