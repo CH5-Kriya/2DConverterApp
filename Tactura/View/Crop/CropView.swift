@@ -112,8 +112,7 @@ struct CropView: View {
             .aspectRatio(contentMode: .fit)
             .overlay {
                 CropOverlay(crop: $model.crop,
-                            aspectRatio: model.aspect.ratio(
-                                originalAspect: model.originalAspect))
+                            normalisedAspect: model.normalisedAspect)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(24)
