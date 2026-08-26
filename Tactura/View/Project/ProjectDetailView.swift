@@ -21,6 +21,7 @@ struct ProjectDetailView: View {
     private var mode: ProjectDetailViewModel.ConfigurationMode = .simple
     @State private var isRenaming = false
     @State private var draftName = ""
+    @State private var isShowingSourceImage = false
 
     /// The workspace comes from the store rather than being built here: this
     /// view is recreated on every push, and a workspace built with it would
@@ -37,6 +38,14 @@ struct ProjectDetailView: View {
         .padding(32)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.Palette.workspaceCanvas)
+        .overlay {
+            if isShowingSourceImage, let image = model.sourceImage {
+                SourceImagePopup(image: image) {
+                    withAnimation(.snappy(duration: 0.22)) { isShowingSourceImage = false }
+                }
+                .transition(.opacity)
+            }
+        }
         .task { await model.load() }
         .toolbar(.hidden, for: .navigationBar)
         .alert("Rename Project", isPresented: $isRenaming) {
@@ -100,6 +109,7 @@ struct ProjectDetailView: View {
             }
 
             VStack(spacing: 0) {
+                sourceThumbnail
                 Spacer(minLength: 0)
                 panelCard
                 Spacer(minLength: 0)
@@ -109,6 +119,18 @@ struct ProjectDetailView: View {
             .animation(.easeInOut(duration: 0.18), value: isExporting)
         }
         .padding(.top, 16)
+    }
+
+    /// Sits above the panel and only when there is a photograph to show: a
+    /// project opened from a checkpoint whose import has since gone from the
+    /// store gets the panel where it has always been, not an empty plate.
+    @ViewBuilder
+    private var sourceThumbnail: some View {
+        if let image = model.sourceImage {
+            SourceImageThumbnail(image: image) {
+                withAnimation(.snappy(duration: 0.22)) { isShowingSourceImage = true }
+            }
+        }
     }
 
     /// One state at a time. The 3D view renders whatever mesh it is given and
@@ -157,6 +179,7 @@ struct ProjectDetailView: View {
                 .overlay(alignment: .bottom) { saveBadge }
                 .animation(.easeOut(duration: 0.18), value: model.refiningLabel)
                 .animation(.easeOut(duration: 0.18), value: model.saveState)
+                .animation(.easeOut(duration: 0.18), value: model.notice)
         }
     }
 
@@ -224,16 +247,27 @@ struct ProjectDetailView: View {
     /// conversion, whose checkpoint is the largest thing the app writes, and
     /// after an edit whose re-blend has already finished. Fades on its own:
     /// a permanent "Saved" stops being information after the first time.
+    /// Finishing an export takes this slot ahead of the save badge. The two
+    /// cannot both be the most important thing at once, and the write that
+    /// follows an export would otherwise put "Saved" over the news that the
+    /// file the person actually asked for is on disk.
     @ViewBuilder
     private var saveBadge: some View {
-        if !model.isRefining, model.saveState != .idle {
-            Label {
-                Text(model.saveState == .saving ? "Saving" : "Saved")
-            } icon: {
-                Image(systemName: model.saveState == .saving
-                      ? "arrow.triangle.2.circlepath"
-                      : "checkmark.circle.fill")
-            }
+        if let notice = model.notice {
+            badge(notice, systemImage: "checkmark.circle.fill", label: notice)
+        } else if !model.isRefining, model.saveState != .idle {
+            badge(model.saveState == .saving ? "Saving" : "Saved",
+                  systemImage: model.saveState == .saving
+                               ? "arrow.triangle.2.circlepath"
+                               : "checkmark.circle.fill",
+                  label: model.saveState.note)
+        }
+    }
+
+    private func badge(_ text: String,
+                       systemImage: String,
+                       label: String) -> some View {
+        Label(text, systemImage: systemImage)
             .font(Theme.Typography.caption)
             .foregroundStyle(Theme.Palette.textSecondary)
             .padding(.horizontal, 18)
@@ -243,23 +277,64 @@ struct ProjectDetailView: View {
             .padding(.bottom, 20)
             .transition(.opacity.combined(with: .offset(y: 10)))
             .accessibilityElement(children: .combine)
-            .accessibilityLabel(model.saveState.note)
-        }
+            .accessibilityLabel(label)
     }
 
+    /// The conversion's wait, told the way the export's is: a bar, what is left
+    /// of it, and how far along it is.
+    ///
+    /// It used to be a phase and a bare bar. That was honest but thin — this is
+    /// the longest wait in the app by a wide margin, minutes rather than
+    /// seconds, and a bar with no number beside it gives someone nothing to
+    /// decide whether to sit through it. The estimate is the same
+    /// extrapolation the export runs on, so the two waits read alike.
     private func progress(label: String, fraction: Double) -> some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 24) {
             Text(label)
                 .font(Theme.Typography.caption)
                 .foregroundStyle(Theme.Palette.textSecondary)
-            ProgressView(value: fraction)
-                .tint(Theme.Palette.accentFill)
-                .frame(width: 260)
+
+            VStack(alignment: .leading, spacing: 10) {
+                ProgressView(value: fraction)
+                    .tint(Theme.Palette.action)
+
+                // Both halves read the wall clock, so both need the heartbeat —
+                // the same one the export's row runs on.
+                TimelineView(.periodic(from: .now, by: 1)) { _ in
+                    HStack(spacing: 8) {
+                        Text(model.conversionElapsed)
+                            .monospacedDigit()
+
+                        Spacer(minLength: 0)
+
+                        // Nothing until there is a rate worth extrapolating
+                        // from. The slot keeps its name either way, so the
+                        // number arriving does not read as a new field.
+                        Text(model.conversionRemaining?.estimatePhrase
+                             ?? "Estimated Time: calculating")
+                    }
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.Palette.textSecondary)
+                    .lineLimit(1)
+                }
+            }
+            // The width the design gives this card: 577 pt of content inside
+            // 28 pt sides. Wider than the export's, which has only the panel's
+            // 238 pt to live in.
+            .frame(width: 577)
         }
-        .padding(28)
+        .padding(.horizontal, 28)
+        .padding(.vertical, 24)
         .background(Theme.Palette.workspacePanel.opacity(0.86),
                     in: RoundedRectangle(cornerRadius: Theme.Metrics.workspacePanelRadius,
                                          style: .continuous))
+        .accessibilityElement(children: .combine)
+        // The percentage left the row when the design's clock took its side,
+        // but "halfway" is the cheapest thing to say and the hardest to read
+        // off a bar you cannot see, so VoiceOver keeps it.
+        .accessibilityLabel(
+            "\(label). \(Int(fraction * 100)) percent."
+            + (model.conversionRemaining.map { " \($0.remainingPhrase)." } ?? ""))
     }
 
     private var historyControls: some View {
