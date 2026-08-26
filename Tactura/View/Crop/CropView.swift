@@ -183,7 +183,11 @@ struct CropView: View {
             Button {
                 Task {
                     if let id = await model.commit() {
-                        appState.open(.project(id), in: .myScans)
+                        // Replaces the cropper rather than stacking on top of
+                        // it: the crop it just committed is the one the
+                        // conversion runs on, so there is nothing left to come
+                        // back here for.
+                        appState.replace(with: .project(id))
                     }
                 }
             } label: {
