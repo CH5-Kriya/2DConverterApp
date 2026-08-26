@@ -1,4 +1,6 @@
+import ImageIO
 import SwiftUI
+import UIKit
 import ReliefCore
 
 @MainActor
@@ -11,6 +13,16 @@ final class ProjectDetailViewModel {
 
     private(set) var project: Project?
     private(set) var isLoading = true
+
+    /// The photograph the relief was made from, for the preview beside it.
+    ///
+    /// Downsampled rather than decoded whole: an import is several megapixels
+    /// and the largest thing drawn from it here is a 776 pt popup. Same
+    /// reasoning as `ProjectThumbnail`, at the size this screen needs — 480 px
+    /// is enough for a row in a list but not for the enlarged view.
+    private(set) var sourceImage: UIImage?
+
+    private static let sourcePreviewMaxPixel = 1600
 
     // MARK: Conversion
 
@@ -25,6 +37,29 @@ final class ProjectDetailViewModel {
     }
 
     private(set) var stage: Stage = .idle
+
+    /// When the run on screen started, for the countdown beside its bar.
+    ///
+    /// Held here rather than in `Stage.converting` so the six places that
+    /// advance the bar do not each have to carry a date forward — one of them
+    /// forgetting would restart the clock and halve the estimate.
+    private(set) var conversionStarted: Date?
+
+    /// How long the conversion has left, on the same extrapolation the export
+    /// uses. `nil` early on, when there is no rate worth extrapolating from.
+    var conversionRemaining: Duration? {
+        guard case .converting(_, let fraction) = stage, let started = conversionStarted
+        else { return nil }
+        return ProgressEstimate.remaining(fraction: fraction, since: started)
+    }
+
+    /// How long the conversion has been going, for the clock on the other side
+    /// of the bar. Recomputed on the card's own heartbeat rather than observed:
+    /// this reads the wall clock, which nothing can publish a change to.
+    var conversionElapsed: String {
+        guard let started = conversionStarted else { return "00:00:00" }
+        return ProgressEstimate.elapsedClock(since: started)
+    }
     private(set) var preview: CGImage?
     private(set) var previewMesh: ReliefPreviewMesh?
     private(set) var summary: String?
@@ -164,6 +199,33 @@ final class ProjectDetailViewModel {
         saveState = .idle
     }
 
+    // MARK: One-off notes
+
+    /// A sentence that appears over the relief for a moment and then goes.
+    ///
+    /// The autosave badge can hang off `saveState` because saving is a state
+    /// something is *in*. Finishing an export is not: by the time it needs
+    /// saying, the run is over and the form that ran it has already been
+    /// swapped back for the sliders, so there is nothing left on screen to
+    /// carry the news. This holds it just long enough to be read.
+    private(set) var notice: String?
+    private var noticeTask: Task<Void, Never>?
+
+    /// Longer than the save badge's two seconds. "Saved" confirms something the
+    /// person did not ask for and will see again; this confirms the one thing
+    /// they came to the screen to do, and it is the only confirmation they get.
+    private static let noticeDuration = Duration.seconds(3)
+
+    private func flash(_ text: String) {
+        noticeTask?.cancel()
+        notice = text
+        noticeTask = Task { [weak self] in
+            try? await Task.sleep(for: Self.noticeDuration)
+            guard !Task.isCancelled else { return }
+            self?.notice = nil
+        }
+    }
+
     func value(for control: Control) -> Double { value(for: control, in: settings) }
 
     /// Takes the settings to read rather than always reading `settings`, so the
@@ -276,6 +338,12 @@ final class ProjectDetailViewModel {
         project = await projects.project(id: projectID)
         isLoading = false
 
+        // Off to one side rather than awaited: the conversion below is the
+        // reason the screen exists, and it should not wait on a picture that
+        // only sits beside it. Outside the `hasStarted` guard so a decode that
+        // failed once is retried on the next visit.
+        Task { [weak self] in await self?.loadSourceImage() }
+
         guard !hasStarted else { return }
         hasStarted = true
 
@@ -292,6 +360,27 @@ final class ProjectDetailViewModel {
         }
     }
 
+    private func loadSourceImage() async {
+        guard sourceImage == nil, project?.hasSourceImage == true else { return }
+        guard let data = await projects.sourceImage(id: projectID) else { return }
+        sourceImage = await Self.downsampled(data, maxPixel: Self.sourcePreviewMaxPixel)
+    }
+
+    /// ImageIO rather than `UIImage(data:)`, so opening a workspace never fully
+    /// decodes a 12-megapixel import to draw a 286 pt plate. `nonisolated`, so
+    /// the decode happens off the main actor.
+    private nonisolated static func downsampled(_ data: Data, maxPixel: Int) async -> UIImage? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixel,
+        ]
+        guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
+        else { return nil }
+        return UIImage(cgImage: image)
+    }
+
     func rename(to name: String) async {
         guard var project else { return }
         project.name = name
@@ -304,12 +393,14 @@ final class ProjectDetailViewModel {
     /// the project be retuned and written again.
     func markExported() async {
         await setStatus(.exported)
+        flash("Export complete")
     }
 
     // MARK: - Running the pipeline
 
     func convert() {
         task?.cancel()
+        conversionStarted = .now
         stage = .converting(label: PipelinePhase.preprocess.label, fraction: 0)
         let config = currentConfig()
         task = Task { [weak self] in await self?.runConversion(config) }
@@ -355,6 +446,7 @@ final class ProjectDetailViewModel {
     /// entire reason the file exists.
     private func restore() {
         task?.cancel()
+        conversionStarted = .now
         stage = .converting(label: "Opening your saved project", fraction: 0.08)
         let config = currentConfig()
         task = Task { [weak self] in await self?.runRestore(config) }

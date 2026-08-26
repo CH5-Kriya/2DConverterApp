@@ -63,13 +63,24 @@ final class AppState {
         self.route = route
     }
 
-    func open(_ destination: AppDestination, in route: AppRoute) {
-        if self.route != route {
-            self.route = route
-            detailPath = [destination]
-        } else {
-            detailPath.append(destination)
-        }
+    /// Opens a page over the current section, in place of anything already
+    /// pushed there — and without changing which section that is.
+    ///
+    /// Two things follow from that, and both are the point.
+    ///
+    /// The stack never grows past one, so the cropper does not sit underneath
+    /// the workspace. Cropping is a step, not a place: once it has handed its
+    /// image over the conversion has already run on it, and a Back button
+    /// offering to re-crop an image that was already converted would convert it
+    /// a second time if you carried on from there.
+    ///
+    /// And the section is left alone, so import → crop → convert ends where it
+    /// began. The flow used to name `.myScans` outright, which meant starting
+    /// on Home and being deposited in My Scans on the way out — the errand
+    /// moved you somewhere you had not asked to go. Only the sidebar changes
+    /// sections now.
+    func replace(with destination: AppDestination) {
+        detailPath = [destination]
     }
 
     func toggleSidebar() {
