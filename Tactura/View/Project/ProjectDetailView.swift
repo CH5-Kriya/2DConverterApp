@@ -116,7 +116,10 @@ struct ProjectDetailView: View {
                 panelActions
             }
             .frame(width: Theme.Metrics.workspacePanelWidth)
-            .animation(.easeInOut(duration: 0.18), value: isExporting)
+            // Clipped to the panel so the card sliding in from the right is
+            // never drawn over the viewport beside it.
+            .clipped()
+            .animation(.easeInOut(duration: 0.24), value: isExporting)
         }
         .padding(.top, 16)
     }
@@ -368,10 +371,16 @@ struct ProjectDetailView: View {
 
     @ViewBuilder
     private var panelCard: some View {
+        // A push, not a cross-fade: the export form arrives from the right and
+        // the settings leave to the left, so the panel reads as moving forward
+        // a step rather than swapping its contents in place. Cancelling runs it
+        // backwards.
         if let export, isExporting {
-            ExportCard(model: export).transition(.opacity)
+            ExportCard(model: export)
+                .transition(.move(edge: .trailing).combined(with: .opacity))
         } else {
-            configurationPanel.transition(.opacity)
+            configurationPanel
+                .transition(.move(edge: .leading).combined(with: .opacity))
         }
     }
 
@@ -536,12 +545,15 @@ struct ProjectDetailView: View {
                 .disabled(!model.canRefine || model.isRefining)
                 .opacity(model.canRefine && !model.isRefining ? 1 : 0.5)
 
-            if let summary = model.summary {
-                Text(summary)
-                    .font(.system(size: 12))
-                    .foregroundStyle(Theme.Palette.textTertiary)
-                    .multilineTextAlignment(.center)
+            // Holds the row Cancel takes once the form is open, so Export never
+            // moves between the two modes. It is the real button, hidden,
+            // rather than a spacer of a guessed height that could drift from it.
+            Button(action: {}) {
+                Text("Cancel").frame(maxWidth: .infinity)
             }
+            .buttonStyle(.workspaceChip)
+            .hidden()
+            .accessibilityHidden(true)
         }
     }
 
