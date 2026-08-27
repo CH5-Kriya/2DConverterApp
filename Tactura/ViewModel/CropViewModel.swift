@@ -41,6 +41,23 @@ final class CropViewModel {
 
     var cropPixels: CGRect { crop.pixels(in: pixelSize) }
 
+    /// The chosen ratio, restated in the crop rectangle's own space.
+    ///
+    /// `CropAspect` states ratios in image terms: 1 : 1 means a square number
+    /// of *pixels*. `CropRect` is fractions of the source, and that space is
+    /// square whatever shape the source is — so on a 4:3 photograph a rectangle
+    /// with equal fractions is 4:3, not square, and the source's own aspect has
+    /// to be divided back out before the number means anything here.
+    ///
+    /// Everything that locks a ratio reads it from here. It used to be worked
+    /// out twice — converted in `applyAspect`, not converted in the overlay's
+    /// corner drag — which is why picking a preset looked right until the
+    /// moment you touched a corner, and then came out at `ratio × original`.
+    var normalisedAspect: Double? {
+        guard let ratio = aspect.ratio(originalAspect: originalAspect) else { return nil }
+        return ratio / originalAspect
+    }
+
     /// Shown in the Width/Height fields. Source pixels, not points — this is
     /// the number that decides how much detail survives the resample to
     /// `work_res`, so it is the one worth putting in front of a person.
@@ -74,32 +91,31 @@ final class CropViewModel {
         guard let value = Double(text), pixelSize.width > 0 else { return }
         var next = crop
         next.width = value / pixelSize.width
-        if let ratio = aspect.ratio(originalAspect: originalAspect) {
-            next.height = next.width * originalAspect / ratio
+        if let target = normalisedAspect {
+            next.height = next.width / target
         }
-        crop = next.clamped()
+        crop = next.clamped(to: normalisedAspect)
     }
 
     func setHeight(_ text: String) {
         guard let value = Double(text), pixelSize.height > 0 else { return }
         var next = crop
         next.height = value / pixelSize.height
-        if let ratio = aspect.ratio(originalAspect: originalAspect) {
-            next.width = next.height * ratio / originalAspect
+        if let target = normalisedAspect {
+            next.width = next.height * target
         }
-        crop = next.clamped()
+        crop = next.clamped(to: normalisedAspect)
     }
 
     /// Re-shape the current rectangle to the chosen ratio, keeping its centre.
     private func applyAspect() {
-        guard let ratio = aspect.ratio(originalAspect: originalAspect) else { return }
+        guard let target = normalisedAspect else { return }
         let centreX = crop.x + crop.width / 2
         let centreY = crop.y + crop.height / 2
 
-        // Ratios are stated in image terms; the normalised space is square, so
-        // the source's own aspect has to be divided back out.
+        // Only ever shrinks the side that is too long, so a rectangle that was
+        // inside the image stays inside it.
         var next = crop
-        let target = ratio / originalAspect
         if next.width / next.height > target {
             next.width = next.height * target
         } else {
@@ -107,7 +123,7 @@ final class CropViewModel {
         }
         next.x = centreX - next.width / 2
         next.y = centreY - next.height / 2
-        crop = next.clamped()
+        crop = next.clamped(to: target)
     }
 
     // MARK: Committing

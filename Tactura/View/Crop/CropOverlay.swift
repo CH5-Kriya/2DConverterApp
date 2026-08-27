@@ -7,7 +7,12 @@ import SwiftUI
 /// compositional decision, and thirds are the cheapest scaffolding for it.
 struct CropOverlay: View {
     @Binding var crop: CropRect
-    let aspectRatio: Double?
+
+    /// The locked ratio in the crop's own normalised space, not in image terms
+    /// — see `CropViewModel.normalisedAspect`. This view only ever works in
+    /// fractions of the source, so it is handed the number already converted
+    /// rather than converting it itself.
+    let normalisedAspect: Double?
 
     /// How close to a corner a touch counts as grabbing it. Generous, because
     /// fingers are not cursors.
@@ -99,7 +104,7 @@ struct CropOverlay: View {
                 let dy = value.translation.height / size.height
 
                 crop = (activeCorner.map { resize(start, corner: $0, dx: dx, dy: dy) }
-                        ?? move(start, dx: dx, dy: dy)).clamped()
+                        ?? move(start, dx: dx, dy: dy)).clamped(to: normalisedAspect)
             }
             .onEnded { _ in
                 dragStart = nil
@@ -147,9 +152,8 @@ struct CropOverlay: View {
 
         // A locked ratio drives height from width, then pulls the anchored edge
         // back so the corner opposite the one being dragged stays put.
-        if let ratio = aspectRatio {
-            let anchored = next
-            next.height = anchored.width / ratio
+        if let target = normalisedAspect {
+            next.height = next.width / target
             if corner == .topLeading || corner == .topTrailing {
                 next.y = start.y + start.height - next.height
             }

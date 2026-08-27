@@ -31,6 +31,12 @@ enum Theme {
         /// a card's supporting line, an unselected rail icon.
         static let textInactive = Color(hex: 0x7E7E7E)
 
+        /// The tutorial pager's dots. Brighter than `textPrimary` would be at
+        /// this size and dimmer than `textInactive`: a 12 pt disc reads much
+        /// heavier than a glyph, so both ends of the pair pull inwards.
+        static let pageIndicator = Color(hex: 0xD9D9D9)
+        static let pageIndicatorInactive = Color(hex: 0x4A4A4A)
+
         static let accentFill = Color(hex: 0xF5F5F5)
         /// Figma's `White` variable. Not pure white, and used wherever the
         /// design calls for white: the dashed outline, the workspace labels.

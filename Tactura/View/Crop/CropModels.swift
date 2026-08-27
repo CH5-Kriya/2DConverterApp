@@ -28,10 +28,31 @@ struct CropRect: Equatable {
     }
 
     /// Clamp back inside the image after any edit.
-    func clamped() -> CropRect {
+    ///
+    /// `target` is the ratio the rectangle is locked to, stated *in this
+    /// normalised space* — nil while the drag is free. It has to be known here
+    /// because the two sides stop being independent the moment a ratio is
+    /// locked, and trimming only the side that overflowed is what turned a
+    /// 1 : 1 crop back into the source's own shape as soon as it was pushed
+    /// against an edge.
+    func clamped(to target: Double? = nil) -> CropRect {
         var rect = self
-        rect.width = min(max(rect.width, Self.minimumSide), 1)
-        rect.height = min(max(rect.height, Self.minimumSide), 1)
+
+        guard let target else {
+            rect.width = min(max(rect.width, Self.minimumSide), 1)
+            rect.height = min(max(rect.height, Self.minimumSide), 1)
+            rect.x = min(max(rect.x, 0), 1 - rect.width)
+            rect.y = min(max(rect.y, 0), 1 - rect.height)
+            return rect
+        }
+
+        // Width carries the pair: height follows from it, so bounding width is
+        // enough to bound both. `height = width / target ≤ 1` is what puts the
+        // second ceiling on width, and the taller of the two floors wins.
+        let floor = max(Self.minimumSide, Self.minimumSide * target)
+        let ceiling = max(min(1, target), floor)
+        rect.width = min(max(rect.width, floor), ceiling)
+        rect.height = rect.width / target
         rect.x = min(max(rect.x, 0), 1 - rect.width)
         rect.y = min(max(rect.y, 0), 1 - rect.height)
         return rect

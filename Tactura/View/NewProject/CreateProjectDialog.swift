@@ -45,7 +45,9 @@ struct CreateProjectDialog: View {
         .onChange(of: model.createdProject) { _, project in
             guard let project else { return }
             appState.isPresentingNewProject = false
-            appState.open(.crop(project.id), in: .myScans)
+            // Stays in whichever section the dialog was opened from, so the
+            // way back out of the flow is the way in.
+            appState.replace(with: .crop(project.id))
             model.clearCreatedProject()
         }
         .alert("Import failed", isPresented: $model.hasError) {
