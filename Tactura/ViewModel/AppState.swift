@@ -18,7 +18,7 @@ enum AppRoute: String, CaseIterable, Identifiable, Hashable {
     var icon: String {
         switch self {
         case .home:      "house"
-        case .myScans:   "bookmark"
+        case .myScans:   "folder"
         case .tutorials: "lightbulb"
         }
     }
@@ -26,7 +26,7 @@ enum AppRoute: String, CaseIterable, Identifiable, Hashable {
     var selectedIcon: String {
         switch self {
         case .home:      "house.fill"
-        case .myScans:   "bookmark.fill"
+        case .myScans:   "folder.fill"
         case .tutorials: "lightbulb.fill"
         }
     }
