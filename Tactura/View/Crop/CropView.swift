@@ -54,14 +54,14 @@ struct CropView: View {
             HStack {
                 Button { dismiss() } label: {
                     Label("Back", systemImage: "chevron.left")
-                        .font(.system(size: 17, weight: .medium))
+                        .tacturaButtonFont(size: 17, weight: .medium)
                         .foregroundStyle(Theme.Palette.onAccent)
                         .padding(.horizontal, 18)
-                        .frame(height: 46)
+                        .tacturaControlFrame(height: 46)
                         .background(Theme.Palette.accentFill,
                                     in: Capsule())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.tacturaPlain)
                 Spacer()
             }
         }
@@ -164,14 +164,14 @@ struct CropView: View {
 
                 Button { model.reset() } label: {
                     Text("Reset")
-                        .font(Theme.Typography.caption)
+                        .tacturaButtonFont(size: 15)
                         .foregroundStyle(Theme.Palette.onAccent)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 48)
+                        .tacturaControlFrame(height: 48)
                         .background(Theme.Palette.accentFill,
                                     in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.tacturaPlain)
                 .disabled(model.isUntouched)
                 .opacity(model.isUntouched ? 0.45 : 1)
                 .padding(.top, 6)
@@ -192,14 +192,14 @@ struct CropView: View {
                 }
             } label: {
                 Text("Continue")
-                    .font(Theme.Typography.button)
+                    .tacturaButtonFont(size: 21, weight: .semibold)
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 54)
+                    .tacturaControlFrame(height: 54)
                     .background(Theme.Palette.action,
                                 in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.tacturaPlain)
             .padding(.top, 20)
         }
         .frame(maxWidth: 330)

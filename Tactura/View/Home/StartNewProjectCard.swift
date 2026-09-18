@@ -35,7 +35,7 @@ struct StartNewProjectCard: View {
                                         style: .continuous))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.tacturaPlain)
         .accessibilityLabel("Start new project")
         .accessibilityHint("Turn visual art into something you can feel.")
     }

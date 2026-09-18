@@ -46,25 +46,25 @@ struct ScanLayoutToggle: View {
                     layout = option
                 } label: {
                     Image(systemName: option.icon)
-                        .font(.system(size: 16, weight: .medium))
+                        .tacturaButtonFont(size: 16, weight: .medium)
                         // The selected half inverts rather than tints: at this
                         // size a fill change is the only state cue that survives
                         // being glanced at.
                         .foregroundStyle(layout == option
                                          ? Theme.Palette.controlFill
                                          : Theme.Palette.white)
-                        .frame(width: 58, height: 42)
+                        .tacturaControlFrame(width: 58, height: 42)
                         .background(layout == option
                                     ? Theme.Palette.white
                                     : Theme.Palette.controlFill)
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.tacturaPlain)
                 .accessibilityLabel(option.label)
                 .accessibilityAddTraits(layout == option ? [.isSelected] : [])
             }
         }
-        .frame(height: 42)
+        .tacturaControlFrame(height: 42)
         .background(Theme.Palette.controlFill)
         .overlay {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -98,9 +98,9 @@ struct ScanSearchField: View {
                     focused = false
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 14))
+                        .tacturaButtonFont(size: 14)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.tacturaPlain)
                 .accessibilityLabel("Clear search")
             }
         }
@@ -108,7 +108,7 @@ struct ScanSearchField: View {
         // read: an empty field is a prompt, a filled one is content.
         .foregroundStyle(Theme.Palette.white.opacity(query.isEmpty && !focused ? 0.44 : 1))
         .padding(.horizontal, 12)
-        .frame(width: 190, height: 42)
+        .tacturaControlFrame(width: 190, height: 42)
         .background(Theme.Palette.controlFill)
         .overlay {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -117,4 +117,3 @@ struct ScanSearchField: View {
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
-

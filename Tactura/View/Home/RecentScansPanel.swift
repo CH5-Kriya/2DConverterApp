@@ -25,9 +25,9 @@ struct RecentScansPanel: View {
             Spacer(minLength: 12)
 
             Button("See all") { appState.select(.myScans) }
-                .font(Theme.Typography.link)
+                .tacturaButtonFont(size: 18)
                 .foregroundStyle(Theme.Palette.textTertiary)
-                .buttonStyle(.plain)
+                .buttonStyle(.tacturaPlain)
         }
         .padding(.horizontal, 28)
         .padding(.vertical, 24)
@@ -40,7 +40,7 @@ struct RecentScansPanel: View {
                 NavigationLink(value: AppDestination.project(project.id)) {
                     RecentScanRow(project: project)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.tacturaPlain)
             }
             Spacer(minLength: 0)
         }

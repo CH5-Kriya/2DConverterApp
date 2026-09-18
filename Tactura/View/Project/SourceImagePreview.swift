@@ -35,7 +35,7 @@ struct SourceImageThumbnail: View {
                 .clipShape(shape)
                 .overlay { shape.strokeBorder(.white, lineWidth: 1) }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.tacturaPlain)
         .accessibilityLabel("Original image")
         .accessibilityHint("Opens the photo this relief was made from")
     }

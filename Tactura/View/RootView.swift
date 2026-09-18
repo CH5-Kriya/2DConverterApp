@@ -3,6 +3,7 @@ import SwiftUI
 struct RootView: View {
     @Environment(AppState.self) private var appState
     @Environment(AppDependencies.self) private var dependencies
+    @Environment(\.tacturaCanvasScale) private var canvasScale
 
     var body: some View {
         ZStack {
@@ -40,9 +41,10 @@ struct RootView: View {
         return NavigationStack(path: $appState.detailPath) {
             HStack(spacing: 0) {
                 SidebarView()
-                    .frame(width: appState.isSidebarExpanded
-                           ? Theme.Metrics.sidebarWidth
-                           : Theme.Metrics.sidebarRailWidth)
+                    .frame(width: max(appState.isSidebarExpanded
+                                      ? Theme.Metrics.sidebarWidth
+                                      : Theme.Metrics.sidebarRailWidth,
+                                      44 / max(canvasScale, 0.01)))
                 sectionContent
                     .id(appState.route)
                     .transition(.opacity)

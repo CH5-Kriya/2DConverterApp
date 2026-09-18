@@ -46,14 +46,15 @@ struct TutorialsView: View {
                 appState.isPresentingNewProject = true
             } label: {
                 Label("Create Project", systemImage: "plus")
-                    .font(.system(size: 18, weight: .medium))
+                    .tacturaButtonFont(size: 18, weight: .medium)
                     .foregroundStyle(.white)
                     .padding(.horizontal, 19)
                     .padding(.vertical, 17)
+                    .tacturaControlFrame(height: 44)
                     .background(Theme.Palette.action,
                                 in: RoundedRectangle(cornerRadius: 9, style: .continuous))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.tacturaPlain)
             .fixedSize()
         }
     }
@@ -91,7 +92,7 @@ struct TutorialsView: View {
                 StepNavButton(direction: .next) { go(to: step + 1) }
             }
         }
-        .frame(height: StepNavButton.height)
+        .tacturaControlFrame(height: StepNavButton.height)
         .overlay { dots }
         .padding(.horizontal, 14)
     }
@@ -268,9 +269,9 @@ private struct StepNavButton: View {
                     Image(systemName: "chevron.forward")
                 }
             }
-            .font(.system(size: 16, weight: .medium))
+            .tacturaButtonFont(size: 16, weight: .medium)
             .foregroundStyle(Theme.Palette.white)
-            .frame(width: Self.width, height: Self.height)
+            .tacturaControlFrame(width: Self.width, height: Self.height)
             .background(Theme.Palette.controlFill,
                         in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             .overlay {
@@ -278,7 +279,7 @@ private struct StepNavButton: View {
                     .strokeBorder(Theme.Palette.workspaceStroke, lineWidth: 0.5)
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.tacturaPlain)
     }
 }
 

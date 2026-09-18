@@ -1,0 +1,323 @@
+\documentclass[11pt]{article}
+
+\newcommand{\docname}{Privacy Policy}
+\newcommand{\docversion}{1.0}
+\newcommand{\docdate}{\ph{EFFECTIVE DATE}}
+\newcommand{\appversion}{1.0}
+\newcommand{\publisher}{\ph{DEVELOPER LEGAL NAME}}
+
+\usepackage{tactura-legal}
+
+\hypersetup{pdftitle={Tactura — Privacy Policy},
+            pdfauthor={Tactura},
+            pdfsubject={Privacy Policy for the Tactura iPadOS application}}
+
+\begin{document}
+\legaltitle
+
+This Privacy Policy explains how \publisher\ (“we”, “us”) handles information in
+connection with \term{Tactura}, an iPadOS application that converts a two-dimensional
+image into a 2.5D relief model suitable for 3D printing.
+
+It is short, and it is short for a reason: \textbf{Tactura has no servers, no accounts and no
+network code.} Everything the app does with your images happens on your iPad.
+
+\begin{keybox}
+{\headingfont\bfseries\fontsize{12}{14}\selectfont The one-sentence version}\par
+\vspace{1.5mm}
+Tactura does not collect, transmit, sell or share any personal data. Your artwork
+is analysed by an artificial-intelligence model that runs entirely on your own
+device, and it never leaves that device unless you deliberately export a file.
+\end{keybox}
+
+% =================================================================
+\section{Summary at a glance}
+
+\begin{plainbox}
+\uifont\small
+\begin{tabular}{@{}p{0.46\textwidth}p{0.47\textwidth}@{}}
+\toprule
+\textbf{Question} & \textbf{Answer} \\
+\midrule
+Do you collect personal data?            & No. \\
+Do you require an account or sign-in?    & No. \\
+Does the app connect to the internet?    & No. It contains no networking code. \\
+Are my images uploaded anywhere?         & No. They are processed on your iPad. \\
+Where does the AI run?                   & On your device, on Apple silicon. \\
+Is my artwork used to train AI models?   & No. Never. \\
+Do you use analytics, ads or trackers?   & No. There are no third-party SDKs. \\
+Do you sell or share my data?            & No. There is nothing to sell or share. \\
+Can I use the app offline?               & Yes, entirely. \\
+Apple “App Privacy” declaration        & \textbf{Data Not Collected}. \\
+\bottomrule
+\end{tabular}
+\end{plainbox}
+
+% =================================================================
+\section{The AI model runs on your device}
+
+This is the most important thing to understand about Tactura, so it comes first.
+
+Converting a flat image into a relief requires estimating how far every pixel of that
+image is from the viewer — a task called \term{monocular depth estimation}. Most
+applications that do this send your picture to a remote server, run a model there, and
+send a result back. Tactura does not. The model is embedded in the application itself
+and executes locally.
+
+\subsection{What is actually running}
+
+\begin{itemize}
+  \item Tactura bundles \term{Depth Anything V2 Small}, a compact
+        vision-transformer depth model published by Apple in \term{Core ML}
+        format at half precision.
+  \item The model file ships \emph{inside} the app you download from the App Store.
+        There is no separate download step, no model server and no licence check.
+  \item Inference is dispatched by Core ML to the \term{Apple Neural Engine} and the
+        other processors on your iPad. Your image is read from the app's own storage,
+        passed to the model in memory, and the resulting depth map is written back to
+        the app's own storage.
+  \item If the bundled model cannot be loaded for any reason, the app falls back to a
+        purely classical image-processing method. That fallback is also entirely local
+        — there is no remote path in either case.
+  \item Every other stage of the conversion pipeline — image preparation, depth
+        correction, region segmentation, volume construction, layer blending, mesh
+        generation and file export — is likewise computed on your iPad using code
+        compiled into the app.
+\end{itemize}
+
+\subsection{What this means for you in practice}
+
+\begin{itemize}
+  \item \textbf{Your images are never transmitted.} Not to us, not to a cloud
+        inference provider, not to Apple, not to anyone. The application contains no
+        code capable of making a network request with your content.
+  \item \textbf{Nothing you make is used for training.} We do not receive your
+        artwork, your prompts, your settings or your results, so none of it can be, or
+        ever will be, used to train or fine-tune any machine-learning model.
+  \item \textbf{The app works with no connection at all.} You can put the iPad in
+        Airplane Mode and every feature — capture, crop, convert, refine, export —
+        continues to work identically. This is a straightforward way to verify the
+        claims on this page for yourself.
+  \item \textbf{No usage telemetry is produced.} We do not know how often you open the
+        app, what you convert, how long a conversion took, or whether it succeeded.
+  \item \textbf{The trade-off is honest.} On-device inference uses your iPad's
+        processor, battery and storage. A conversion is computationally heavy; the
+        device may warm up and battery use during a conversion is noticeable. We
+        consider that an acceptable price for your work staying yours.
+\end{itemize}
+
+% =================================================================
+\section{Information the app can access on your device}
+
+Tactura asks your iPad for access to three things, each only at the moment you use the
+corresponding feature, and each governed by iOS's own permission system. You can
+review or revoke every one of them at any time in \textbf{Settings $\rightarrow$
+Privacy \& Security}, or in \textbf{Settings $\rightarrow$ Tactura}.
+
+\subsection{Camera}
+If you choose to photograph your artwork inside the app, iPadOS asks for camera
+permission the first time. The camera preview is rendered locally and the still image
+you capture is saved into the app's private storage as the source image for that
+project. Tactura does not record video, does not capture audio, does not use the
+camera in the background, and does not transmit any frame anywhere. Declining camera
+access disables only the in-app capture screen; importing from your photo library
+still works.
+
+\subsection{Photo library}
+If you import an existing image, Tactura presents the standard iPadOS photo picker.
+That picker is provided and run by the operating system, not by us. Tactura receives
+\emph{only} the single image you select. The app is not granted the ability to browse,
+search, enumerate or read the rest of your photo library, and it does not request
+full-library access.
+
+\subsection{Files, when you export}
+When you export a model, Tactura shows the system document picker so you can choose a
+destination folder — on the iPad, in iCloud Drive, or in another provider you have
+installed. iPadOS grants the app temporary, scoped permission to write into the folder
+you picked, and nothing else. Tactura writes the single file you asked for and nothing
+more. If you choose a destination synchronised by a cloud service, that service's own
+privacy policy governs the copy you placed there; that is your choice and outside our
+control.
+
+% =================================================================
+\section{What Tactura stores, and where}
+
+All application data lives inside Tactura's sandbox on your iPad — a private area
+that other apps cannot read, protected by iOS Data Protection and the device's
+hardware encryption whenever the device is locked.
+
+\begin{plainbox}
+\uifont\small
+\begin{tabular}{@{}p{0.26\textwidth}p{0.67\textwidth}@{}}
+\toprule
+\textbf{What} & \textbf{Why it exists} \\
+\midrule
+Project record   & The project's name, its creation and modification dates, and the
+                   conversion settings you chose. \\
+Source image     & The photograph or imported picture the project was made from, kept
+                   so you can revisit and re-convert a project later. \\
+Checkpoint file  & The intermediate result of the expensive analysis stages, cached so
+                   that adjusting a slider does not re-run the AI model. It is
+                   regenerable, and is deliberately excluded from device backups. \\
+\bottomrule
+\end{tabular}
+\end{plainbox}
+
+There is no hidden log, no crash-reporting bundle, no advertising identifier and no
+usage database. We hold no copy of any of the above, because none of it is ever sent
+to us.
+
+\subsection{Retention and deletion}
+Your data is retained on your device for exactly as long as you want it. Deleting a
+project inside the app removes that project's folder and everything in it. Deleting
+Tactura from your iPad removes all of its data. Because we store nothing, there is no
+server-side copy to request the deletion of and no retention period on our side.
+
+\subsection{Backups}
+If you have enabled iCloud Backup or you back up your iPad to a computer, the project
+records and source images inside the app's storage may be included in that backup, in
+the same way as data from any other app. Those backups are made, encrypted and
+controlled by Apple under Apple's terms and privacy policy — we have no access to
+them. The large regenerable checkpoint files are explicitly marked to be excluded from
+backups.
+
+% =================================================================
+\section{No third-party data collection}
+
+Tactura contains no analytics framework, no crash-reporting service, no advertising
+network, no attribution or “growth” SDK, no social-media integration and no
+third-party service that receives data about you.
+
+The app does incorporate third-party \emph{software components} — an image-processing
+library, the depth model described in Section 2, and a mesh-simplification routine.
+These are compiled into the application and execute locally. None of them collect
+information, and none of them communicate with any network service. They are listed,
+with their licences, in Tactura's Terms and Conditions.
+
+We do not sell personal information. We do not share personal information for
+cross-context behavioural advertising. We do not disclose personal information to
+anyone, for any purpose, because we do not receive any.
+
+% =================================================================
+\section{Children's privacy}
+
+Tactura is a general-audience creative tool and is suitable for all ages. It collects
+no personal information from anyone, including children, and therefore collects none
+from children under 13 (or the equivalent age of digital consent in your country,
+which is between 13 and 16 across the European Union). There is no sign-up, no profile,
+no messaging, no user-generated-content feed and no advertising in the app. Tactura is
+not directed at children in a manner that would make it subject to the U.S. Children's
+Online Privacy Protection Act (COPPA) as an operator collecting children's data,
+because no data is collected at all.
+
+% =================================================================
+\section{Your rights under data-protection law}
+
+Data-protection law across the world gives you rights over personal data that an
+organisation holds about you. Those laws include the EU General Data Protection
+Regulation (GDPR) and the UK GDPR, Indonesia's Personal Data Protection Law
+(Undang-Undang No.\ 27 of 2022, \emph{Pelindungan Data Pribadi}), the California
+Consumer Privacy Act as amended by the CPRA, Brazil's LGPD, Canada's PIPEDA,
+Australia's Privacy Act, Japan's APPI, South Korea's PIPA, and comparable statutes
+elsewhere.
+
+In each case those rights attach to data that we, as an organisation, process about
+you. \textbf{We process none.} We are not a controller or a processor of your personal
+data in connection with your use of Tactura, because no personal data reaches us. There
+is accordingly no international transfer of your data, no automated decision-making
+carried out by us, no profiling, and no third-country recipient.
+
+Applied to Tactura, your rights work out as follows:
+
+\begin{plainbox}
+\uifont\small
+\begin{tabular}{@{}p{0.33\textwidth}p{0.60\textwidth}@{}}
+\toprule
+\textbf{Right} & \textbf{How it is satisfied} \\
+\midrule
+Access / portability  & Your data is already in your possession. Export any project as
+                        a standard \texttt{.stl} or \texttt{.png} file at any time. \\
+Rectification         & Edit or re-convert a project directly in the app. \\
+Erasure               & Delete a project, or delete the app. Nothing survives
+                        elsewhere. \\
+Restriction / objection & Revoke camera or photo access in iOS Settings, or stop using
+                        the app. \\
+Withdraw consent      & Revoke the relevant iOS permission at any time; the app
+                        continues to function without it. \\
+Non-discrimination    & Every feature is available to every user. There is no paid
+                        tier that trades features for data. \\
+Complaint             & You may complain to your national supervisory authority — in
+                        Indonesia, the authority designated under UU PDP; in the EU or
+                        UK, your local data-protection authority. \\
+\bottomrule
+\end{tabular}
+\end{plainbox}
+
+If you would like this confirmed in writing for your own records, write to us at the
+address in Section 10 and we will respond.
+
+\subsection{A note for California residents}
+In the twelve months preceding the effective date of this policy, we have not
+collected, sold or shared any category of personal information listed in the CCPA. We
+have no “Do Not Sell or Share My Personal Information” link because there is nothing
+to opt out of.
+
+% =================================================================
+\section{Security}
+
+Because Tactura keeps everything local, its security posture rests on your device's own
+protections, which are substantial:
+
+\begin{itemize}
+  \item Application data is stored inside the iOS sandbox, which prevents other
+        applications from reading it.
+  \item Files are protected by iOS Data Protection and are encrypted at rest by the
+        device's hardware while the device is locked.
+  \item The app is distributed exclusively through the App Store and is code-signed;
+        iPadOS verifies that signature before it will run.
+  \item There is no attack surface in the form of an account, a password, a session
+        token, an API key or a server, because none of those exist.
+\end{itemize}
+
+The practical advice that follows from this is ordinary but worth stating: protect your
+iPad with a passcode or Face~ID, keep iPadOS updated, and remember that anyone with
+access to your unlocked device has access to your projects.
+
+% =================================================================
+\section{Changes to this policy}
+
+If Tactura ever gains a feature that changes the answers above — for example an
+optional cloud backup, or crash reporting — we will update this policy before that
+feature ships, revise the “Last updated” date at the top, and describe the change in
+the App Store release notes for the version concerned. Material changes that would
+involve collecting personal data will be presented to you in the app, and will require
+your explicit opt-in. We will not quietly begin collecting data under an old policy.
+
+Previous versions of this policy remain available on request.
+
+% =================================================================
+\section{Contact}
+
+Questions about this policy, or about privacy in Tactura generally, are welcome.
+
+\begin{plainbox}
+\uifont
+\textbf{Data controller / publisher}\quad \publisher \\[3pt]
+\textbf{Email}\quad \ph{CONTACT EMAIL} \\[3pt]
+\textbf{Postal address}\quad \ph{POSTAL ADDRESS} \\[3pt]
+\textbf{EU / UK representative}\quad \ph{IF APPLICABLE — OTHERWISE DELETE THIS LINE} \\[3pt]
+\textbf{Support}\quad \ph{SUPPORT URL}
+\end{plainbox}
+
+We aim to reply to any privacy enquiry within 30 days, which is the response window
+required by the GDPR and by most comparable statutes.
+
+\vspace{4mm}
+{\color{tactRule}\hrule height 0.6pt}
+\vspace{2mm}
+{\uifont\footnotesize\color{tactMuted}
+This policy covers the Tactura application only. It does not cover the App Store
+itself, iCloud, or any third-party service you may choose to export a file into —
+each of those is governed by its own provider's privacy policy.\par}
+
+\end{document}

@@ -1,0 +1,122 @@
+% ---------------------------------------------------------------
+%  tactura-legal.sty — shared styling for Tactura's legal documents
+%  Compile with XeLaTeX (system fonts are loaded via fontspec).
+% ---------------------------------------------------------------
+\ProvidesPackage{tactura-legal}
+
+\usepackage{geometry}
+\geometry{a4paper, top=26mm, bottom=24mm, left=24mm, right=24mm,
+          headheight=14pt, headsep=10mm, footskip=12mm}
+
+\usepackage{fontspec}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{tcolorbox}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{ragged2e}
+\usepackage{microtype}
+\usepackage[hidelinks]{hyperref}
+\tcbuselibrary{skins,breakable}
+
+% ---- Brand palette (from Tactura's design system) ---------------
+\definecolor{tactInk}{HTML}{141414}      % body text  — Theme canvas
+\definecolor{tactMuted}{HTML}{6B6B6B}    % secondary text
+\definecolor{tactRule}{HTML}{DCDCDC}     % hairlines
+\definecolor{tactBlue}{HTML}{0A84FF}     % Theme.action — the accent
+\definecolor{tactBlueDark}{HTML}{0060C0}
+\definecolor{tactWash}{HTML}{F2F7FF}     % tinted callout ground
+\definecolor{tactWarnWash}{HTML}{FFF8E8}
+\definecolor{tactWarnEdge}{HTML}{C9931F}
+
+% ---- Type -------------------------------------------------------
+\setmainfont{Charter}[
+  UprightFont     = * Roman,
+  BoldFont        = * Bold,
+  ItalicFont      = * Italic,
+  BoldItalicFont  = * Bold Italic,
+  Numbers         = OldStyle ]
+\newfontfamily\headingfont{Helvetica Neue}[
+  UprightFont = * Medium, BoldFont = * Bold, ItalicFont = * Italic ]
+\newfontfamily\uifont{Helvetica Neue}[
+  UprightFont = * Light, BoldFont = * Medium ]
+\setmonofont{Menlo}[Scale=0.84]
+
+\color{tactInk}
+\linespread{1.12}
+\setlength{\parskip}{0.55em}
+\setlength{\parindent}{0pt}
+\RaggedRight
+\emergencystretch=2.5em
+
+% ---- Section headings -------------------------------------------
+\titleformat{\section}
+  {\headingfont\bfseries\fontsize{13.5}{16}\selectfont\color{tactInk}}
+  {\color{tactBlue}\thesection}{0.7em}{}
+\titlespacing*{\section}{0pt}{1.9em}{0.55em}
+
+\titleformat{\subsection}
+  {\headingfont\bfseries\fontsize{11}{13}\selectfont\color{tactInk}}
+  {\color{tactBlue}\thesubsection}{0.6em}{}
+\titlespacing*{\subsection}{0pt}{1.25em}{0.35em}
+
+% ---- Lists ------------------------------------------------------
+\setlist[itemize]{leftmargin=1.25em, itemsep=0.28em, topsep=0.4em,
+                  parsep=0pt, label=\textcolor{tactBlue}{\small$\bullet$}}
+\setlist[enumerate]{leftmargin=1.6em, itemsep=0.28em, topsep=0.4em, parsep=0pt}
+
+% ---- Header / footer --------------------------------------------
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+\renewcommand{\headrule}{\color{tactRule}\hrule height 0.4pt}
+\fancyhead[L]{\uifont\footnotesize\color{tactMuted} Tactura \textperiodcentered\ \docname}
+\fancyhead[R]{\uifont\footnotesize\color{tactMuted} Version \docversion}
+\fancyfoot[C]{\uifont\footnotesize\color{tactMuted} Page \thepage\ of \pageref{LastPage}}
+\usepackage{lastpage}
+
+% ---- The fill-before-publishing placeholder ---------------------
+\newcommand{\ph}[1]{%
+  \textcolor{tactWarnEdge}{\uifont\bfseries [#1]}}
+
+% ---- Callout boxes ----------------------------------------------
+\newtcolorbox{keybox}[1][]{
+  enhanced, breakable, colback=tactWash, colframe=tactBlue,
+  boxrule=0pt, leftrule=2.6pt, arc=2pt, outer arc=2pt,
+  left=10pt, right=10pt, top=9pt, bottom=9pt,
+  boxsep=0pt, before skip=1.1em, after skip=1.1em, #1}
+
+\newtcolorbox{plainbox}[1][]{
+  enhanced, breakable, colback=white, colframe=tactRule,
+  boxrule=0.5pt, arc=2pt, outer arc=2pt,
+  left=10pt, right=10pt, top=9pt, bottom=9pt,
+  boxsep=0pt, before skip=1.1em, after skip=1.1em, #1}
+
+% ---- Title block -------------------------------------------------
+\newcommand{\legaltitle}{%
+  \thispagestyle{plain}%
+  \begingroup
+  \uifont\fontsize{9}{11}\selectfont\color{tactBlue}%
+  \MakeUppercase{\textbf{Tactura}}\hspace{0.5em}%
+  \textcolor{tactMuted}{2D to 2.5D relief for iPadOS}\par
+  \vspace{2mm}
+  {\headingfont\bfseries\fontsize{26}{30}\selectfont\color{tactInk}\docname\par}
+  \vspace{2.5mm}
+  {\color{tactRule}\hrule height 2pt}
+  \vspace{3mm}
+  \uifont\fontsize{9.2}{13}\selectfont\color{tactMuted}
+  \begin{tabular}{@{}p{0.30\textwidth}@{}p{0.66\textwidth}@{}}
+    \textbf{Effective date} & \docdate \\
+    \textbf{Last updated}   & \docdate \\
+    \textbf{Applies to}     & Tactura for iPadOS, version \appversion\ and later \\
+    \textbf{Publisher}      & \publisher \\
+  \end{tabular}
+  \par\vspace{1mm}
+  \endgroup
+  \vspace{2mm}}
+
+% Small caps-ish lead-in for defined terms
+\newcommand{\term}[1]{\textbf{#1}}

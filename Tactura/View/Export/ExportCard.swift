@@ -27,12 +27,12 @@ struct ExportCard: View {
                 .foregroundStyle(Theme.Palette.textPrimary)
 
             field("Project name") {
-                TextField("Project name", text: $model.projectName)
+                    TextField("Project name", text: $model.projectName)
                     .textFieldStyle(.plain)
                     .font(.system(size: 14))
                     .foregroundStyle(Theme.Palette.textPrimary)
                     .padding(.horizontal, 12)
-                    .frame(height: Theme.Metrics.workspaceControlHeight)
+                    .tacturaControlFrame(height: Theme.Metrics.workspaceControlHeight)
                     .background(inputBackground)
                     .disabled(model.stage.isRunning)
             }
@@ -54,16 +54,17 @@ struct ExportCard: View {
                         pickingFolder = true
                     } label: {
                         Image(systemName: "folder")
-                            .font(.system(size: 15, weight: .medium))
+                            .tacturaButtonFont(size: 15, weight: .medium)
                             .foregroundStyle(Theme.Palette.textPrimary)
-                            .frame(width: Theme.Metrics.workspaceControlHeight,
-                                   height: Theme.Metrics.workspaceControlHeight)
+                            .tacturaControlFrame(
+                                width: Theme.Metrics.workspaceControlHeight,
+                                height: Theme.Metrics.workspaceControlHeight)
                             .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.tacturaPlain)
                     .accessibilityLabel("Choose export folder")
                 }
-                .frame(height: Theme.Metrics.workspaceControlHeight)
+                .tacturaControlFrame(height: Theme.Metrics.workspaceControlHeight)
                 .background(inputBackground)
             }
 
@@ -234,10 +235,10 @@ private struct FormatChip: View {
     var body: some View {
         Button(action: action) {
             Text(format.label)
-                .font(.system(size: 14))
+                .tacturaButtonFont(size: 14)
                 .foregroundStyle(isSelected ? .white : Theme.Palette.textPrimary)
                 .frame(maxWidth: .infinity)
-                .frame(height: Theme.Metrics.workspaceControlHeight)
+                .tacturaControlFrame(height: Theme.Metrics.workspaceControlHeight)
                 .background(isSelected
                             ? Theme.Palette.action
                             : Theme.Palette.surfaceSelected,
@@ -246,7 +247,7 @@ private struct FormatChip: View {
                                 style: .continuous))
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.tacturaPlain)
         .accessibilityLabel("\(format.label), \(format.detail)")
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
         .animation(.easeOut(duration: 0.15), value: isSelected)

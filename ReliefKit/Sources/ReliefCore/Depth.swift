@@ -17,6 +17,19 @@ public struct DepthResult: Sendable {
 public protocol DepthBackend {
     var name: String { get }
     func predict(rgb: Plane, lab: Plane) throws -> DepthResult
+
+    /// Free whatever the prediction held. Depth finishes before the mesh
+    /// stage, and for either Core ML backend the weights are the largest
+    /// single allocation in the app.
+    func unload()
+}
+
+public extension DepthBackend {
+    /// The classical backend holds nothing, so this is a no-op for it — which
+    /// is the point of it living on the protocol rather than at the call site,
+    /// where it was a downcast to one concrete backend and quietly did nothing
+    /// for any other.
+    func unload() {}
 }
 
 /// Pure-numerics layer decomposition. Always available.

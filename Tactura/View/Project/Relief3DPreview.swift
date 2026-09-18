@@ -132,15 +132,12 @@ struct Relief3DPreview: View {
                 // The circle is drawn around the glyph, so the glyph's size is
                 // what sizes the button.
                 Image(systemName: "square.grid.3x3")
-                    .font(.system(size: 18, weight: .medium))
             }
             .foregroundStyle(showsGrid ? Theme.Palette.workspaceLabel
                                        : Theme.Palette.textTertiary)
             .accessibilityLabel("Grid")
             .accessibilityValue(showsGrid ? "On" : "Off")
-            .buttonStyle(.bordered)
-            .buttonBorderShape(.circle)
-            .tint(Theme.Palette.workspaceControl)
+            .buttonStyle(.tacturaCircle)
             .padding(16)
         }
     }

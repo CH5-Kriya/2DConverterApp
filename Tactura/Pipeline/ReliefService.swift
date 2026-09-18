@@ -41,10 +41,17 @@ actor ReliefService {
             throw Failure.badImage
         }
 
-        // Real model where it is bundled; the dependency-free heuristic
-        // otherwise, so a missing or unloadable model degrades output quality
+        // Best model that is actually in the bundle, then the dependency-free
+        // heuristic, so a missing or unloadable model degrades output quality
         // instead of blocking the run — the same policy the reference has.
-        let backend: DepthBackend = CoreMLDepthBackend.bundled()
+        //
+        // dav2-large is disabled app-wide for the small-vs-large comparison; its
+        // package stays in Resources. To re-enable it, put
+        // `(CoreMLDepthBackend.bundled() as DepthBackend?) ??` back at the head
+        // of this chain.
+        // The cast is load-bearing: `??` cannot unify a concrete optional with
+        // a different concrete type on its own.
+        let backend: DepthBackend = (AppleDepthBackend.bundled() as DepthBackend?)
             ?? ClassicalLayersBackend(layerCount: config.depth.classicalLayers)
 
         let pipeline = ReliefPipeline(config: config, depthBackend: backend)
@@ -52,7 +59,7 @@ actor ReliefService {
 
         // Depth is finished; at fp16 those weights are the largest single
         // allocation in the app and the mesh stage is next.
-        (backend as? CoreMLDepthBackend)?.unload()
+        backend.unload()
         try Task.checkCancellation()
 
         let volume = pipeline.buildVolume(analysis, progress: progress)

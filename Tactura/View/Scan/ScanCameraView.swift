@@ -70,13 +70,13 @@ struct ScanCameraView: View {
             HStack {
                 Button(action: onCancel) {
                     Label("Cancel", systemImage: "chevron.left")
-                        .font(.system(size: 17, weight: .medium))
+                        .tacturaButtonFont(size: 17, weight: .medium)
                         .foregroundStyle(Theme.Palette.onAccent)
                         .padding(.horizontal, 18)
-                        .frame(height: 46)
+                        .tacturaControlFrame(height: 46)
                         .background(Theme.Palette.accentFill, in: Capsule())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.tacturaPlain)
                 Spacer()
             }
         }
@@ -175,15 +175,15 @@ struct ScanCameraView: View {
                     // Blue, like Continue on the crop step: the one control on
                     // the screen that carries the project forward.
                     Text("Use Photo")
-                        .font(Theme.Typography.button)
+                        .tacturaButtonFont(size: 21, weight: .semibold)
                         .foregroundStyle(.white)
-                        .frame(width: Theme.Metrics.buttonWidth,
-                               height: Theme.Metrics.buttonHeight)
+                        .tacturaControlFrame(width: Theme.Metrics.buttonWidth,
+                                             height: Theme.Metrics.buttonHeight)
                         .background(Theme.Palette.action,
                                     in: RoundedRectangle(cornerRadius: Theme.Metrics.buttonRadius,
                                                          style: .continuous))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.tacturaPlain)
             }
 
         default:
@@ -198,17 +198,18 @@ struct ScanCameraView: View {
             ZStack {
                 Circle()
                     .strokeBorder(Theme.Palette.textPrimary.opacity(0.9), lineWidth: 4)
-                    .frame(width: 86, height: 86)
+                    .tacturaControlFrame(width: 86, height: 86)
                 Circle()
                     .fill(Theme.Palette.accentFill)
-                    .frame(width: 70, height: 70)
+                    .tacturaControlFrame(width: 70, height: 70,
+                                         minimumRenderedSize: 34)
                     .opacity(model.isCapturing ? 0.3 : 1)
                 if model.isCapturing {
                     ProgressView().tint(Theme.Palette.onAccent)
                 }
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.tacturaPlain)
         .disabled(model.isCapturing)
         .accessibilityLabel("Take photo")
     }

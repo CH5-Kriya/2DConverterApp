@@ -1,0 +1,388 @@
+\documentclass[11pt]{article}
+
+\newcommand{\docname}{Terms and Conditions}
+\newcommand{\docversion}{1.0}
+\newcommand{\docdate}{\ph{EFFECTIVE DATE}}
+\newcommand{\appversion}{1.0}
+\newcommand{\publisher}{\ph{DEVELOPER LEGAL NAME}}
+
+\usepackage{tactura-legal}
+
+\hypersetup{pdftitle={Tactura — Terms and Conditions},
+            pdfauthor={Tactura},
+            pdfsubject={End User Licence Agreement and Terms of Use for the Tactura iPadOS application}}
+
+\begin{document}
+\legaltitle
+
+These Terms and Conditions (the “\term{Terms}”) form a binding agreement between you
+(“\term{you}”) and \publisher\ (“\term{we}”, “\term{us}”, “\term{our}”)
+governing your use of \term{Tactura}, an iPadOS application that converts a
+two-dimensional image into a 2.5D relief model suitable for 3D printing (the
+“\term{App}”).
+
+By downloading, installing or using the App you accept these Terms. If you do not
+accept them, do not use the App and delete it from your device.
+
+\begin{keybox}
+{\headingfont\bfseries\fontsize{12}{14}\selectfont What you should know before reading further}\par
+\vspace{1.5mm}
+\begin{itemize}[topsep=2pt]
+  \item The App runs its artificial-intelligence model \textbf{entirely on your iPad}.
+        We never receive your images, and we have no ability to access, moderate or
+        recover your work.
+  \item \textbf{You keep every right in the artwork you convert and in the models you
+        export.} We claim no licence in them.
+  \item The relief output is an \textbf{estimate produced by a machine-learning model}.
+        It is not a measurement. Inspect it before you print it.
+  \item These Terms supplement, and do not replace, Apple's Licensed Application End
+        User Licence Agreement (Section 14).
+\end{itemize}
+\end{keybox}
+
+% =================================================================
+\section{Eligibility}
+
+You must be at least 13 years old — or the minimum age of digital consent in your
+country of residence, which is up to 16 in parts of the European Union — to accept
+these Terms on your own behalf. If you are below that age you may use the App only with
+the involvement of a parent or legal guardian who accepts these Terms for you. If you
+are accepting these Terms on behalf of an organisation, you confirm you are authorised
+to bind it.
+
+You may not use the App if you are barred from doing so under the laws of your country
+of residence or of the country from which you use it, or if you are subject to the
+restrictions in Section 14.7.
+
+% =================================================================
+\section{Licence}
+
+Subject to these Terms, we grant you a limited, personal, non-exclusive,
+non-transferable, non-sublicensable and revocable licence to install and use one copy
+of the App on any Apple-branded device that you own or control, as permitted by the
+App Store Usage Rules in force from time to time. Where those Usage Rules allow Family
+Sharing or volume purchasing, this licence extends accordingly.
+
+This is a licence, not a sale. All rights not expressly granted are reserved by us and
+by our licensors.
+
+\subsection{Scope of permitted use}
+The App may be used for personal, educational, academic, research and commercial
+purposes, subject to these Terms and any rights that apply to Your Content.
+
+\subsection{What you may not do}
+You may not, and may not permit anyone else to:
+
+\begin{itemize}
+  \item copy, redistribute, rent, lease, lend, sell or sublicense the App, or make it
+        available over a network for others to use;
+  \item extract, decompile, disassemble, reverse-engineer or otherwise attempt to
+        derive the source code of the App, or extract the bundled machine-learning
+        model weights for use outside the App, except to the extent that applicable law
+        expressly permits this notwithstanding a contractual prohibition;
+  \item remove, obscure or alter any copyright, trademark or other proprietary notice;
+  \item circumvent any technical limitation, or use the App in a manner that breaches
+        the App Store Usage Rules;
+  \item use the App to process content that you do not have the right to process, or
+        that is unlawful in your jurisdiction; or
+  \item use the App in the design or operation of any system where a failure could
+        lead to death, personal injury, or severe physical or environmental damage.
+\end{itemize}
+
+% =================================================================
+\section{Your content and your intellectual property}
+
+\term{Your Content} means every image you photograph or import into the App, and every
+relief model, height map, mesh or file the App produces from it.
+
+\begin{itemize}
+  \item \textbf{You own Your Content.} As between you and us, you retain all right,
+        title and interest in it, including all intellectual-property rights.
+  \item \textbf{We claim no licence in Your Content.} We do not take a licence to use,
+        reproduce, display, adapt, publish or distribute it, and we could not exercise
+        one if we did: Your Content never leaves your device, so we never receive it.
+  \item \textbf{We do not train on Your Content.} It is not, and will not be, used to
+        train, fine-tune, evaluate or improve any machine-learning model.
+  \item \textbf{You are responsible for the rights in what you convert.} You warrant
+        that you own Your Content or otherwise have every permission needed to use it
+        with the App. Converting someone else's drawing, photograph, character or
+        design may infringe their copyright, trademark, design right, personality
+        right or moral rights, and the fact that the App transformed it into a relief
+        does not change that. You bear that responsibility, not us.
+  \item \textbf{We cannot recover it.} Because we hold no copy, we cannot restore Your
+        Content if you delete a project, delete the App, or lose or reset your device.
+        Export anything you care about.
+\end{itemize}
+
+% =================================================================
+\section{On-device processing, and what that means for support}
+
+The App performs all image analysis, depth estimation, mesh construction and file
+export locally on your iPad, using a machine-learning model compiled into the
+application. There is no server component and the App contains no networking code.
+
+Two consequences follow, and both cut in your favour and against you:
+
+\begin{itemize}
+  \item \textbf{In your favour:} your work is private by construction, the App
+        functions with no internet connection, and no outage, subscription lapse or
+        service shutdown on our part can take away the functionality you have
+        installed.
+  \item \textbf{Against you:} we have no visibility into problems you experience. We
+        cannot see your projects, reproduce a failure remotely, retrieve a lost file or
+        diagnose a crash from our side. Support therefore depends on the description
+        you give us.
+\end{itemize}
+
+% =================================================================
+\section{Device requirements and performance}
+
+The App requires an iPad running the version of iPadOS stated on its App Store listing,
+and requires free storage for the App, its approximately 50 MB embedded depth model,
+and the projects you create.
+
+Conversion is computationally intensive. Speed, thermal behaviour and battery
+consumption vary significantly with the iPad model, the size of the image and the
+settings you choose; devices with an Apple Neural Engine are markedly faster. We do not
+warrant any particular conversion time. Sustained conversion may cause the device to
+become warm and may cause iPadOS to reduce performance to manage temperature, which is
+normal system behaviour and not a defect in the App.
+
+% =================================================================
+\section{AI-generated output — accuracy and limitations}
+
+The App uses a monocular depth-estimation model to infer three-dimensional structure
+from a single flat image. This is, by its nature, an \emph{estimation} problem: the true
+depth of a scene cannot be determined from one picture, and the model produces a
+plausible interpretation rather than a measurement.
+
+You should therefore expect, and accept, that:
+
+\begin{itemize}
+  \item output may be inaccurate, distorted, inconsistent between runs, or simply
+        unlike what you expected;
+  \item results depend heavily on input quality — lighting, contrast, focus,
+        occlusion, reflective or transparent subjects, and unusual compositions all
+        degrade the estimate;
+  \item dimensions, proportions, thicknesses and relative depths in an exported model
+        are \textbf{not to scale and are not metrologically valid}; and
+  \item the App is a creative and educational tool. It must not be relied upon for
+        engineering, architectural, medical, forensic, navigational, structural or any
+        other purpose where dimensional accuracy affects safety, health, legal rights
+        or property.
+\end{itemize}
+
+\subsection{3D printing}
+Exported files are provided for you to inspect and use at your own discretion. Before
+printing, review the model in slicing software and satisfy yourself that it is suitable.
+We are not responsible for wasted filament or resin, failed prints, damage to a printer,
+or any injury or damage arising from a printed object. 3D printers involve high
+temperatures, moving parts and, in the case of resin systems, hazardous chemicals —
+follow your printer manufacturer's safety instructions, which govern in every case.
+
+% =================================================================
+\section{Data, storage and backup}
+
+Projects are stored inside the App's private storage on your device. Deleting a project
+deletes its files; deleting the App deletes all of them. Large intermediate files are
+deliberately excluded from device backups because the App can regenerate them.
+
+You are solely responsible for backing up anything you wish to keep. The most reliable
+way to do so is to export the finished model to a location you control. How the App
+handles information is described in full in our Privacy Policy, which forms part of
+these Terms.
+
+% =================================================================
+\section{Updates and availability}
+
+We may issue updates that fix defects, improve output quality, adapt the App to new
+versions of iPadOS or new hardware, or add and remove features. Updates are delivered
+through the App Store and are subject to your device settings. Some updates may be
+required for the App to keep functioning on a newer iPadOS release.
+
+We may cease publishing or supporting the App at any time. Because the App runs
+entirely on your device, a copy you have already installed will keep working for as
+long as your device and its operating system allow — we cannot switch it off
+remotely, and we make no commitment that it will remain compatible with future
+versions of iPadOS.
+
+% =================================================================
+\section{Disclaimer of warranties}
+
+To the maximum extent permitted by applicable law, the App is provided \textbf{“as
+is” and “as available”}, without warranty of any kind. We disclaim all warranties,
+express, implied or statutory, including any implied warranties of merchantability,
+satisfactory quality, fitness for a particular purpose, accuracy, and non-infringement.
+
+We do not warrant that the App will be uninterrupted or error-free, that defects will
+be corrected, that it will meet your requirements, or that any output will be accurate,
+printable or fit for any purpose.
+
+\begin{plainbox}
+\uifont\small
+\textbf{Consumer rights are not affected.} Some jurisdictions do not allow the
+exclusion of implied warranties or of certain statutory guarantees. Nothing in these
+Terms excludes, restricts or modifies any guarantee, right or remedy that you have
+under mandatory consumer-protection law that cannot lawfully be excluded — including
+rights under EU and UK consumer law, the Australian Consumer Law, and Indonesian
+consumer-protection law. Where such law applies, the disclaimers and limitations in
+Sections 9 and 10 apply only to the extent that law permits.
+\end{plainbox}
+
+% =================================================================
+\section{Limitation of liability}
+
+To the maximum extent permitted by applicable law, and subject always to the box in
+Section 9:
+
+\begin{itemize}
+  \item we will not be liable for any indirect, incidental, special, consequential,
+        exemplary or punitive damages, or for any loss of profits, revenue, goodwill,
+        data, content or opportunity, however caused and on any theory of liability,
+        even if we have been advised of the possibility of such damages;
+  \item our total aggregate liability arising out of or relating to the App and these
+        Terms will not exceed the greater of the amount you actually paid for the App
+        in the twelve months preceding the event giving rise to the claim, or
+        \ph{CURRENCY AND AMOUNT}.
+\end{itemize}
+
+Nothing in these Terms limits our liability for death or personal injury caused by our
+negligence, for fraud or fraudulent misrepresentation, or for any other liability that
+cannot lawfully be limited.
+
+% =================================================================
+\section{Indemnity}
+
+You agree to indemnify and hold us harmless from any claim, demand, loss or expense
+(including reasonable legal fees) brought by a third party and arising out of your
+breach of these Terms, your misuse of the App, or your processing of content in which
+you did not hold the necessary rights. This clause does not apply where you are acting
+as a consumer and applicable law does not permit it.
+
+% =================================================================
+\section{Third-party components and attribution}
+
+The App incorporates the following third-party software, redistributed under the
+licences shown. Each executes locally within the App and none transmits data.
+
+\begin{plainbox}
+\uifont\small
+\begin{tabular}{@{}p{0.29\textwidth}p{0.30\textwidth}p{0.32\textwidth}@{}}
+\toprule
+\textbf{Component} & \textbf{Purpose} & \textbf{Licence} \\
+\midrule
+Depth Anything V2 Small & Monocular depth estimation & Apache License 2.0 \\[3pt]
+DINOv2 (encoder backbone)   & Feature extraction within the depth model &
+  Apache License 2.0 \\[3pt]
+OpenCV                      & Image processing & Apache License 2.0 \\[3pt]
+Mesh simplification routine & Reducing exported mesh complexity & MIT License \\[3pt]
+Apple Core ML, AVFoundation, PhotoKit, SwiftUI & Model execution, capture, import, interface &
+  Apple SDK licence terms \\
+\bottomrule
+\end{tabular}
+\end{plainbox}
+
+Full licence texts are reproduced in the App under \textbf{Settings $\rightarrow$
+Acknowledgements} \ph{CONFIRM LOCATION} and are available from us on request. Where a component's licence conflicts with these Terms in respect of that
+component, the component's licence prevails for that component.
+
+Depth Anything V2 is the work of its respective authors and is used under the
+Apache License 2.0; its inclusion does not imply their endorsement of the App.
+
+% =================================================================
+\section{Termination}
+
+These Terms apply until terminated. They terminate automatically if you breach them, and
+you may terminate them at any time by deleting the App from your devices. On
+termination the licence in Section 2 ends and you must stop using the App. Sections 3,
+9, 10, 11, 12 and 15 survive termination.
+
+% =================================================================
+\section{Terms required by Apple}
+
+You acknowledge and agree the following, which apply because the App is distributed
+through the App Store. These Terms are concluded between you and us only, and not with
+Apple Inc.\ (“\term{Apple}”). Where these Terms are less protective of you than
+Apple's Licensed Application End User Licence Agreement, that agreement's terms prevail.
+
+\begin{enumerate}[label=\textbf{14.\arabic*}]
+  \item \textbf{Responsibility.} We, not Apple, are solely responsible for the App and
+        its content.
+  \item \textbf{Maintenance and support.} Apple has no obligation whatsoever to furnish
+        any maintenance or support services for the App. Support is provided by us at
+        the contact address in Section 16.
+  \item \textbf{Warranty.} In the event of any failure of the App to conform to any
+        applicable warranty, you may notify Apple, and Apple will refund the purchase
+        price (if any) for the App to you. To the maximum extent permitted by
+        applicable law, Apple has no other warranty obligation whatsoever with respect
+        to the App, and any other claims, losses, liabilities, damages, costs or
+        expenses attributable to any failure to conform to any warranty are our sole
+        responsibility.
+  \item \textbf{Product claims.} We, not Apple, are responsible for addressing any
+        claims by you or any third party relating to the App or your possession and use
+        of it, including product-liability claims, any claim that the App fails to
+        conform to any applicable legal or regulatory requirement, and claims arising
+        under consumer-protection, privacy or similar legislation.
+  \item \textbf{Intellectual-property claims.} In the event of any third-party claim
+        that the App or your possession and use of it infringes that third party's
+        intellectual-property rights, we, not Apple, will be solely responsible for the
+        investigation, defence, settlement and discharge of that claim.
+  \item \textbf{Third-party beneficiary.} Apple and Apple's subsidiaries are
+        third-party beneficiaries of these Terms, and upon your acceptance of them
+        Apple will have the right (and will be deemed to have accepted the right) to
+        enforce these Terms against you as a third-party beneficiary.
+  \item \textbf{Legal compliance.} You represent and warrant that you are not located
+        in a country subject to a U.S.\ Government embargo or designated by the U.S.\
+        Government as a “terrorist supporting” country, and that you are not listed
+        on any U.S.\ Government list of prohibited or restricted parties.
+\end{enumerate}
+
+% =================================================================
+\section{Governing law and disputes}
+
+These Terms are governed by the laws of \ph{GOVERNING JURISDICTION}, without regard to its conflict-of-laws rules, and the courts of that
+jurisdiction have non-exclusive jurisdiction over any dispute.
+
+\textbf{This does not deprive you of local protection.} If you are a consumer, you also
+have the benefit of any mandatory provisions of the law of the country in which you
+reside, and you may bring proceedings in the courts of that country. Nothing in this
+Section limits a consumer's right under EU or UK law to rely on the mandatory rules of
+their home jurisdiction. Consumers resident in the European Union may also use the
+European Commission's Online Dispute Resolution platform.
+
+We encourage you to contact us first; most disputes are resolved faster by email than
+by litigation.
+
+% =================================================================
+\section{General, and how to reach us}
+
+\textbf{Changes.} We may amend these Terms to reflect changes to the App or to the law.
+The revised version will carry a new “Last updated” date and will be made available
+with the App's App Store listing. Continued use after a change takes effect constitutes
+acceptance. Changes that materially reduce your rights will be brought to your attention
+in the App.
+
+\textbf{Severability.} If any provision is held unenforceable, it will be modified to
+the minimum extent necessary or severed, and the remainder will continue in full force.
+
+\textbf{No waiver.} A failure to enforce any provision is not a waiver of it.
+
+\textbf{Assignment.} You may not assign these Terms. We may assign them in connection
+with a merger, acquisition or sale of assets, on notice.
+
+\textbf{Entire agreement.} These Terms, together with the Privacy Policy and Apple's
+Licensed Application End User Licence Agreement, constitute the entire agreement
+between you and us regarding the App.
+
+\textbf{Language.} These Terms are published in English. \ph{IF YOU PUBLISH A
+TRANSLATION, STATE WHICH VERSION PREVAILS — OTHERWISE DELETE THIS SENTENCE}
+
+\begin{plainbox}
+\uifont
+\textbf{Publisher}\quad \publisher \\[3pt]
+\textbf{Email}\quad \ph{CONTACT EMAIL} \\[3pt]
+\textbf{Postal address}\quad \ph{POSTAL ADDRESS} \\[3pt]
+\textbf{Support}\quad \ph{SUPPORT URL}
+\end{plainbox}
+
+\end{document}

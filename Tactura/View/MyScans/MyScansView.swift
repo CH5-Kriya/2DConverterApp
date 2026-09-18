@@ -96,7 +96,7 @@ struct MyScansView: View {
         NavigationLink(value: AppDestination.project(project.id)) {
             label()
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.tacturaPlain)
         .contextMenu {
             Button("Delete", role: .destructive) {
                 Task { await model.delete(project) }

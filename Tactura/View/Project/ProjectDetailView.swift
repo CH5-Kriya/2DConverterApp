@@ -80,7 +80,7 @@ struct ProjectDetailView: View {
             } label: {
                 HStack(spacing: 8) {
                     Text(model.project?.name ?? "Project")
-                        .font(.system(size: 24))
+                        .tacturaButtonFont(size: 24)
                         .underline()
                         .foregroundStyle(Theme.Palette.workspaceLabel.opacity(0.9))
                     Image("RenameProject")
@@ -90,10 +90,10 @@ struct ProjectDetailView: View {
                         .foregroundStyle(Theme.Palette.workspaceLabel.opacity(0.9))
                 }
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.tacturaPlain)
             .accessibilityLabel("Rename project")
         }
-        .frame(height: Theme.Metrics.workspaceControlHeight)
+        .tacturaControlFrame(height: Theme.Metrics.workspaceControlHeight)
     }
 
     // MARK: - Body

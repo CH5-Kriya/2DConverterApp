@@ -15,7 +15,7 @@ struct SidebarRow: View {
                 isSelected: isSelected
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.tacturaPlain)
         .accessibilityLabel(route.title)
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
@@ -35,17 +35,17 @@ struct SidebarItemLabel: View {
                 HStack(spacing: 18) {
                     icon
                     Text(title)
-                        .font(Theme.Typography.navItem)
+                        .tacturaButtonFont(size: 20, weight: .medium)
                         .fixedSize()
                     Spacer(minLength: 0)
                 }
                 .padding(.horizontal, 20)
-                .frame(height: Theme.Metrics.sidebarRowHeight)
+                .tacturaControlFrame(height: Theme.Metrics.sidebarRowHeight)
                 .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 icon
-                    .frame(width: Theme.Metrics.sidebarRailItemSize,
-                           height: Theme.Metrics.sidebarRailItemSize)
+                    .tacturaControlFrame(width: Theme.Metrics.sidebarRailItemSize,
+                                         height: Theme.Metrics.sidebarRailItemSize)
                     .frame(maxWidth: .infinity)
             }
         }
@@ -59,8 +59,6 @@ struct SidebarItemLabel: View {
                              : Theme.Metrics.sidebarRailItemRadius,
                              style: .continuous)
                 .fill(isSelected ? Theme.Palette.selectedFill : .clear)
-                .frame(width: isExpanded ? nil : Theme.Metrics.sidebarRailItemSize,
-                       height: isExpanded ? nil : Theme.Metrics.sidebarRailItemSize)
         }
         .contentShape(Rectangle())
         .animation(.easeOut(duration: 0.18), value: isSelected)
@@ -68,8 +66,8 @@ struct SidebarItemLabel: View {
 
     private var icon: some View {
         Image(systemName: systemImage)
-            .font(.system(size: 20, weight: .medium))
-            .frame(width: 28)
+            .tacturaButtonFont(size: 20, weight: .medium)
+            .frame(minWidth: 28)
     }
 }
 

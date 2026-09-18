@@ -33,6 +33,16 @@ DerivedData/
 Tactura/Resources/*.mlpackage/
 Tactura/Resources/*.f32
 
+# Depth Anything V2 Small, as Apple publishes it (~50 MB) IS committed.
+#
+# It is Apache-2.0 and every file is under GitHub's 100 MB limit, so
+# unlike the large model it can simply live here -- which is the whole
+# point: the iOS build has a real depth model on a fresh clone with no
+# conversion step and no 640 MB copy.
+#
+#   huggingface.co/apple/coreml-depth-anything-v2-small
+!Tactura/Resources/DepthAnythingV2SmallF16.mlpackage/
+
 # SwiftPM build products
 ReliefKit/.build/
 .swiftpm/

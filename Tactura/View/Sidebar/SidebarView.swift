@@ -72,7 +72,7 @@ struct SidebarView: View {
                 isSelected: false
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.tacturaPlain)
         .accessibilityLabel(isExpanded ? "Hide menu" : "Show menu")
     }
 }
