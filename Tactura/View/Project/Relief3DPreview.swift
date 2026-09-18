@@ -23,6 +23,13 @@ struct Relief3DPreview: View {
     /// is a standing preference about how someone reads a relief, not a
     /// decision they want to retake every time they open a project.
     @AppStorage("relief3DShowsGrid") private var showsGrid = true
+    @AppStorage("relief3DShowsStatistics") private var showsStatistics = true
+    @AppStorage("relief3DShowsWireframe") private var showsWireframe = false
+    @AppStorage("relief3DAutoRotate") private var autoRotate = false
+    @AppStorage("relief3DCameraZoom") private var cameraZoom = 1.0
+    @AppStorage("relief3DLaysFlatOnGrid") private var laysFlatOnGrid = false
+
+    @State private var isShowingDisplaySettings = false
 
     /// Both gestures report totals measured from where they began, and the
     /// camera moves in increments, so the last reading has to be kept to
@@ -58,11 +65,23 @@ struct Relief3DPreview: View {
             .onChange(of: showsGrid, initial: true) { _, shows in
                 stage.showsGrid = shows
             }
+            .onChange(of: cameraZoom, initial: true) { _, zoom in
+                stage.setZoom(1 / Float(zoom))
+            }
+            .onChange(of: laysFlatOnGrid, initial: true) { _, liesFlat in
+                stage.setLiesFlatOnGrid(liesFlat)
+            }
+            .task(id: WireframeRequest(meshID: mesh?.id, isEnabled: showsWireframe)) {
+                await stage.setShowsWireframe(showsWireframe, for: mesh)
+            }
+            .task(id: autoRotate) {
+                await stage.runAutoRotation(enabled: autoRotate)
+            }
             .gesture(orbit)
             .simultaneousGesture(dolly)
         }
         .overlay(alignment: .topLeading) { readout }
-        .overlay(alignment: .topTrailing) { controls }
+        .overlay(alignment: .topLeading) { displayControls }
         .accessibilityLabel("3D preview")
         .accessibilityHint("Drag to orbit the model, pinch to zoom.")
     }
@@ -89,7 +108,9 @@ struct Relief3DPreview: View {
                     lastMagnification = value.magnification
                     return
                 }
-                stage.dolly(by: Float(value.magnification / lastMagnification))
+                let cameraDistance = stage.dolly(
+                    by: Float(value.magnification / lastMagnification))
+                cameraZoom = Double(1 / cameraDistance)
                 lastMagnification = value.magnification
             }
             .onEnded { _ in isZooming = false }
@@ -97,7 +118,7 @@ struct Relief3DPreview: View {
 
     @ViewBuilder
     private var readout: some View {
-        if let mesh {
+        if showsStatistics, let mesh {
             Text(caption(for: mesh))
                 .font(.system(size: 12, weight: .regular))
                 .monospacedDigit()
@@ -124,24 +145,42 @@ struct Relief3DPreview: View {
     }
 
     @ViewBuilder
-    private var controls: some View {
+    private var displayControls: some View {
         if mesh != nil {
-            Button {
-                showsGrid.toggle()
-            } label: {
-                // The circle is drawn around the glyph, so the glyph's size is
-                // what sizes the button.
-                Image(systemName: "square.grid.3x3")
-                    .font(.system(size: 18, weight: .medium))
+            HStack(alignment: .top, spacing: 10) {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isShowingDisplaySettings.toggle()
+                    }
+                } label: {
+                    Image(systemName: "slider.horizontal.3")
+                        .font(.system(size: 18, weight: .medium))
+                }
+                .foregroundStyle(Theme.Palette.workspaceLabel)
+                .accessibilityLabel("Display settings")
+                .accessibilityValue(isShowingDisplaySettings ? "Expanded" : "Collapsed")
+                .buttonStyle(.bordered)
+                .buttonBorderShape(.circle)
+                .tint(Theme.Palette.workspaceControl)
+
+                if isShowingDisplaySettings {
+                    DisplaySettingsPanel(
+                        showsGrid: $showsGrid,
+                        showsStatistics: $showsStatistics,
+                        showsWireframe: $showsWireframe,
+                        autoRotate: $autoRotate,
+                        cameraZoom: $cameraZoom,
+                        laysFlatOnGrid: $laysFlatOnGrid
+                    )
+                    .transition(.opacity.combined(with: .scale(scale: 0.96,
+                                                                anchor: .leading)))
+                }
             }
-            .foregroundStyle(showsGrid ? Theme.Palette.workspaceLabel
-                                       : Theme.Palette.textTertiary)
-            .accessibilityLabel("Grid")
-            .accessibilityValue(showsGrid ? "On" : "Off")
-            .buttonStyle(.bordered)
-            .buttonBorderShape(.circle)
-            .tint(Theme.Palette.workspaceControl)
-            .padding(16)
+            // The readout already owns the upper-left corner. Display controls
+            // live directly below it when it is visible, but stay in the same
+            // left-hand position if Statistics is turned off.
+            .padding(.leading, 16)
+            .padding(.top, showsStatistics ? 64 : 16)
         }
     }
 
@@ -150,6 +189,83 @@ struct Relief3DPreview: View {
         formatter.numberStyle = .decimal
         return formatter
     }()
+}
+
+private struct DisplaySettingsPanel: View {
+    @Binding var showsGrid: Bool
+    @Binding var showsStatistics: Bool
+    @Binding var showsWireframe: Bool
+    @Binding var autoRotate: Bool
+    @Binding var cameraZoom: Double
+    @Binding var laysFlatOnGrid: Bool
+
+    private static let defaultZoom = 1.0
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Display Settings")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Theme.Palette.textPrimary)
+                .padding(.bottom, 16)
+
+            settingToggle("Grid", isOn: $showsGrid)
+            settingToggle("Statistics", isOn: $showsStatistics)
+            settingToggle("Wireframe", isOn: $showsWireframe)
+            settingToggle("Auto-rotate", isOn: $autoRotate)
+            settingToggle("Lay Flat on Grid", isOn: $laysFlatOnGrid)
+
+            HStack {
+                Text("Camera Zoom")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Theme.Palette.textPrimary)
+                Spacer()
+                Text("\(Int(cameraZoom * 100))%")
+                    .font(.system(size: 16).monospacedDigit())
+                    .foregroundStyle(Theme.Palette.textSecondary)
+            }
+            .padding(.top, 12)
+
+            HStack(spacing: 12) {
+                Slider(value: $cameraZoom, in: 0.3...4.0, step: 0.05)
+                    .tint(Theme.Palette.textPrimary)
+
+                Button {
+                    cameraZoom = Self.defaultZoom
+                } label: {
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.system(size: 16, weight: .medium))
+                        .frame(width: 38, height: 38)
+                }
+                .foregroundStyle(Theme.Palette.textSecondary)
+                .background(Theme.Palette.workspaceControl,
+                            in: RoundedRectangle(cornerRadius: 10,
+                                                 style: .continuous))
+                .accessibilityLabel("Reset camera zoom")
+            }
+            .padding(.top, 6)
+        }
+        .padding(24)
+        .frame(width: Theme.Metrics.workspacePanelWidth, alignment: .leading)
+        .background(Theme.Palette.workspacePanel.opacity(0.78),
+                    in: RoundedRectangle(cornerRadius: Theme.Metrics.workspacePanelRadius,
+                                         style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Metrics.workspacePanelRadius,
+                             style: .continuous)
+                .strokeBorder(Theme.Palette.workspaceStroke.opacity(0.16), lineWidth: 0.5)
+        )
+    }
+
+    private func settingToggle(_ title: String,
+                               isOn: Binding<Bool>) -> some View {
+        Toggle(isOn: isOn) {
+            Text(title)
+                .font(.system(size: 14))
+                .foregroundStyle(Theme.Palette.textPrimary)
+        }
+        .tint(Theme.Palette.textPrimary)
+        .padding(.vertical, 5)
+    }
 }
 
 /// Everything the camera distance depends on. Bundled so one `onChange` covers
@@ -161,6 +277,14 @@ struct Framing: Equatable {
     var aspect: Float {
         size.height > 0 ? Float(size.width / size.height) : 1
     }
+}
+
+/// The wireframe construction has to re-run when either the source geometry
+/// or its visibility changes. A named value keeps that dependency explicit to
+/// SwiftUI's task system.
+private struct WireframeRequest: Equatable {
+    var meshID: UUID?
+    var isEnabled: Bool
 }
 
 // MARK: - Scene
@@ -177,6 +301,9 @@ final class ReliefStage {
     /// A container rather than the grid itself, so hiding the floor and
     /// swapping it for a new plate's are independent of each other.
     private let floor = Entity()
+    /// A child of the model, so it follows every standing/flat and turntable
+    /// transformation exactly instead of maintaining a second pose.
+    private let wireframe = Entity()
 
     /// Cell size of the floor currently under the model, in millimetres.
     private(set) var gridSpacingMm: Double?
@@ -188,6 +315,7 @@ final class ReliefStage {
     private let camera = PerspectiveCamera()
     private let material: PhysicallyBasedMaterial
     private var loaded: UUID?
+    private var wireframeLoaded: UUID?
 
     /// The camera pose, in spherical coordinates about the origin: the arm
     /// length that fits the plate to the viewport, the user's zoom riding on
@@ -196,13 +324,16 @@ final class ReliefStage {
     private var zoom: Float = 1
     private var yaw = ReliefStage.homeYaw
     private var pitch = ReliefStage.homePitch
+    private var modelRoll: Float = 0
+    private var liesFlatOnGrid = false
+    private var meshExtent: SIMD3<Float>?
 
     /// Straight-on with a little lift and offset: enough perspective to read
     /// the depth, close enough to head-on that the image is still legible.
     private static let homeDirection = simd_normalize(SIMD3<Float>(0.09, 0.10, 0.40))
     private static let homeYaw = atan2(homeDirection.x, homeDirection.z)
     private static let homePitch = asin(homeDirection.y)
-    private static let fieldOfView: Float = 50
+    private static let defaultFieldOfView: Float = 50
 
     /// Pinch damping: the camera arm scales by `magnification ^ zoomResponse`.
     /// At 1.0 — roughly what the built-in orbit control does — a pinch across
@@ -241,10 +372,11 @@ final class ReliefStage {
         surface.faceCulling = .back
         material = surface
 
-        camera.camera.fieldOfViewInDegrees = Self.fieldOfView
+        camera.camera.fieldOfViewInDegrees = Self.defaultFieldOfView
         aim()
 
         root.addChild(model)
+        model.addChild(wireframe)
         root.addChild(floor)
         root.addChild(camera)
         addLights()
@@ -264,6 +396,8 @@ final class ReliefStage {
               !Task.isCancelled else { return }
         model.model = ModelComponent(mesh: resource, materials: [material])
         loaded = snapshot.id
+        meshExtent = snapshot.extent
+        updateModelOrientation()
         await layFloor(under: snapshot)
     }
 
@@ -278,6 +412,7 @@ final class ReliefStage {
         floor.children.removeAll()
         if let grid { floor.addChild(grid.entity) }
         gridSpacingMm = grid?.spacingMm
+        positionFloor()
     }
 
     /// Stands the camera back far enough that the plate fits the viewport.
@@ -289,7 +424,7 @@ final class ReliefStage {
         guard let extent = framing.extent, framing.aspect > 0,
               framing.aspect.isFinite else { return }
 
-        let halfFov = Self.fieldOfView / 2 * .pi / 180
+        let halfFov = Self.defaultFieldOfView / 2 * .pi / 180
         let vertical = (extent.y / 2) / tan(halfFov)
         let horizontal = (extent.x / 2) / tan(atan(tan(halfFov) * framing.aspect))
         // A little air around the plate, plus the relief itself, which stands
@@ -316,8 +451,9 @@ final class ReliefStage {
     }
 
     /// Dollies by one step of a pinch, damped by `zoomResponse`.
-    func dolly(by step: Float) {
-        guard step > 0, step.isFinite else { return }
+    @discardableResult
+    func dolly(by step: Float) -> Float {
+        guard step > 0, step.isFinite else { return zoom }
         // Pinching out enlarges the model, which is a *shorter* camera arm —
         // hence the divide. Raising each incremental step to the exponent
         // compounds to exactly the same damping as raising the gesture's total
@@ -325,6 +461,81 @@ final class ReliefStage {
         zoom = min(max(zoom / pow(step, Self.zoomResponse), Self.zoomNearest),
                    Self.zoomFurthest)
         aim()
+        return zoom
+    }
+
+    func setZoom(_ value: Float) {
+        guard value.isFinite else { return }
+        zoom = min(max(value, Self.zoomNearest), Self.zoomFurthest)
+        aim()
+    }
+
+    /// Turns the upright relief into a plate resting on the XZ floor. The
+    /// relief is authored in XY with depth along +Z, so -90° around X puts its
+    /// face upward (+Y) without mirroring the image.
+    func setLiesFlatOnGrid(_ value: Bool) {
+        liesFlatOnGrid = value
+        updateModelOrientation()
+        positionFloor()
+    }
+
+    /// Shows a sampled rendering of the regular top-surface triangulation.
+    /// The export may contain millions of edges, so drawing every edge would
+    /// make this display aid less useful than the model itself. Sampling still
+    /// preserves the actual triangle direction and density pattern while
+    /// keeping interaction smooth.
+    func setShowsWireframe(_ value: Bool, for snapshot: ReliefPreviewMesh?) async {
+        wireframe.isEnabled = value
+        guard value, let snapshot else { return }
+        guard snapshot.id != wireframeLoaded else { return }
+
+        guard let descriptor = ReliefWireframe.descriptor(for: snapshot),
+              let resource = try? await MeshResource(from: [descriptor]),
+              !Task.isCancelled,
+              wireframe.isEnabled else { return }
+
+        wireframe.children.removeAll()
+        wireframe.addChild(ModelEntity(mesh: resource, materials: [Self.wireMaterial]))
+        wireframeLoaded = snapshot.id
+    }
+
+    func runAutoRotation(enabled: Bool) async {
+        guard enabled else { return }
+
+        let clock = ContinuousClock()
+        while !Task.isCancelled {
+            let start = clock.now
+            modelRoll += 0.012
+            updateModelOrientation()
+            let elapsed = clock.now - start
+            do {
+                let remaining = .milliseconds(30) - elapsed
+                if remaining > .zero {
+                    try await clock.sleep(for: remaining)
+                }
+            } catch {
+                return
+            }
+        }
+    }
+
+    /// Applies the standing/lying pose first, then rotates it around the
+    /// world's vertical axis so an auto-rotating flat relief still turns like
+    /// an object placed on a table.
+    private func updateModelOrientation() {
+        let base = liesFlatOnGrid
+            ? simd_quatf(angle: -.pi / 2, axis: SIMD3<Float>(1, 0, 0))
+            : simd_quatf(angle: 0, axis: SIMD3<Float>(1, 0, 0))
+        let turntable = simd_quatf(angle: modelRoll, axis: SIMD3<Float>(0, 1, 0))
+        model.orientation = turntable * base
+    }
+
+    /// `ReliefGrid` is built for an upright plate, whose lower edge is
+    /// `extent.y / 2` below its origin. A lying plate's thickness is its Z
+    /// extent, so its floor moves up to meet that thinner underside instead.
+    private func positionFloor() {
+        guard let extent = meshExtent else { return }
+        floor.position.y = liesFlatOnGrid ? (extent.y - extent.z) / 2 : 0
     }
 
     /// Moves the camera. Nothing else.
@@ -368,6 +579,111 @@ final class ReliefStage {
         light(SIMD3(0.60, -0.20, 0.55), intensity: 500,
               colour: UIColor(red: 0.90, green: 0.94, blue: 1.0, alpha: 1))
         light(SIMD3(0.10, 0.35, -0.70), intensity: 800, colour: .white)
+    }
+
+    private static let wireMaterial: PhysicallyBasedMaterial = {
+        var material = PhysicallyBasedMaterial()
+        material.baseColor = .init(tint: UIColor(white: 0.06, alpha: 1))
+        material.roughness = 1.0
+        material.metallic = 0.0
+        material.faceCulling = .none
+        return material
+    }()
+}
+
+/// RealityKit's public custom-mesh API has triangles but no line primitive.
+/// Each line below is therefore a very narrow, two-sided ribbon lifted just
+/// clear of the relief surface. Crucially, the source is `indices`, rather
+/// than an assumed image grid, so this follows the actual face topology —
+/// including any future decimation and the sides/back of the printable solid.
+private enum ReliefWireframe {
+    /// Fully expanded wire ribbons are four new vertices per edge. Showing
+    /// every edge of a 900 × 900 preview would be millions of ribbons and can
+    /// exhaust an iPad's GPU memory, so exceptionally dense previews sample
+    /// their *real* triangles evenly across the index buffer. Normal meshes
+    /// (up to this face count) show every edge exactly.
+    private static let maximumFaces = 200_000
+    private static let lineWidth: Float = 0.00024
+    private static let surfaceLift: Float = 0.00012
+
+    static func descriptor(for snapshot: ReliefPreviewMesh) -> MeshDescriptor? {
+        let faceCount = snapshot.indices.count / 3
+        guard faceCount > 0 else {
+            return nil
+        }
+
+        let displayedFaces = min(faceCount, maximumFaces)
+        var edges = Set<WireframeEdge>()
+        edges.reserveCapacity(displayedFaces * 2)
+        for sample in 0..<displayedFaces {
+            // This distributes a capped selection over the entire mesh rather
+            // than drawing only the first part of its index buffer.
+            let face = sample * faceCount / displayedFaces
+            let base = face * 3
+            let a = snapshot.indices[base]
+            let b = snapshot.indices[base + 1]
+            let c = snapshot.indices[base + 2]
+            edges.insert(WireframeEdge(a, b))
+            edges.insert(WireframeEdge(b, c))
+            edges.insert(WireframeEdge(c, a))
+        }
+
+        var positions: [SIMD3<Float>] = []
+        var normals: [SIMD3<Float>] = []
+        var indices: [UInt32] = []
+        positions.reserveCapacity(edges.count * 4)
+        normals.reserveCapacity(edges.count * 4)
+        indices.reserveCapacity(edges.count * 6)
+
+        func addRibbon(from first: Int, to second: Int) {
+            let start = snapshot.positions[first]
+            let end = snapshot.positions[second]
+            let length = simd_length(end - start)
+            guard length > .ulpOfOne else { return }
+
+            let direction = (end - start) / length
+            var normal = snapshot.normals[first] + snapshot.normals[second]
+            let normalLength = simd_length(normal)
+            normal = normalLength > .ulpOfOne
+                ? normal / normalLength
+                : SIMD3<Float>(0, 0, 1)
+
+            var side = simd_cross(direction, normal)
+            let sideLength = simd_length(side)
+            guard sideLength > .ulpOfOne else { return }
+            side = side / sideLength * (lineWidth / 2)
+
+            let lift = normal * surfaceLift
+            let base = UInt32(positions.count)
+            positions += [start + lift - side, start + lift + side,
+                          end + lift + side, end + lift - side]
+            normals += [normal, normal, normal, normal]
+            indices += [base, base + 1, base + 2, base, base + 2, base + 3]
+        }
+
+        for edge in edges {
+            addRibbon(from: Int(edge.lower), to: Int(edge.upper))
+        }
+
+        guard !positions.isEmpty else { return nil }
+        var descriptor = MeshDescriptor(name: "relief wireframe")
+        descriptor.positions = MeshBuffers.Positions(positions)
+        descriptor.normals = MeshBuffers.Normals(normals)
+        descriptor.primitives = .triangles(indices)
+        return descriptor
+    }
+
+}
+
+/// An undirected mesh edge. Triangles commonly share an edge, but it is drawn
+/// once in the wireframe rather than twice as a darker, thicker ribbon.
+private struct WireframeEdge: Hashable {
+    let lower: UInt32
+    let upper: UInt32
+
+    init(_ first: UInt32, _ second: UInt32) {
+        lower = min(first, second)
+        upper = max(first, second)
     }
 }
 

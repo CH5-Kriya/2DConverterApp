@@ -22,6 +22,7 @@ struct ProjectDetailView: View {
     @State private var isRenaming = false
     @State private var draftName = ""
     @State private var isShowingSourceImage = false
+    @State private var explainedControl: ProjectDetailViewModel.Control?
 
     /// The workspace comes from the store rather than being built here: this
     /// view is recreated on every push, and a workspace built with it would
@@ -44,6 +45,14 @@ struct ProjectDetailView: View {
                     withAnimation(.snappy(duration: 0.22)) { isShowingSourceImage = false }
                 }
                 .transition(.opacity)
+            }
+        }
+        .overlay {
+            if let control = explainedControl {
+                SliderInfoPopup(control: control) {
+                    withAnimation(.snappy(duration: 0.22)) { explainedControl = nil }
+                }
+                .transition(.opacity.combined(with: .scale(scale: 0.96)))
             }
         }
         .task { await model.load() }
@@ -461,9 +470,22 @@ struct ProjectDetailView: View {
 
     private func parameterRow(_ control: ProjectDetailViewModel.Control) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(control.title)
-                .font(.system(size: 14))
-                .foregroundStyle(Theme.Palette.textPrimary)
+            HStack(spacing: 6) {
+                Text(control.title)
+                    .font(.system(size: 14))
+                    .foregroundStyle(Theme.Palette.textPrimary)
+
+                Button {
+                    withAnimation(.snappy(duration: 0.22)) { explainedControl = control }
+                } label: {
+                    Image(systemName: "info.circle.fill")
+                        .font(.system(size: 15))
+                        .foregroundStyle(Theme.Palette.textTertiary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("About \(control.title)")
+                .accessibilityHint("Explains what the \(control.title) slider changes")
+            }
 
             HStack(alignment: .top, spacing: 16) {
                 VStack(spacing: 3) {
@@ -561,6 +583,115 @@ struct ProjectDetailView: View {
 
     private func binding(for control: ProjectDetailViewModel.Control) -> Binding<Double> {
         Binding { model.value(for: control) } set: { model.setValue($0, for: control) }
+    }
+}
+
+/// A short, task-specific explanation belongs beside a control, instead of in
+/// a separate tutorial people must leave the editor to find. The image area is
+/// intentionally a placeholder until the product has approved illustrations.
+private struct SliderInfoPopup: View {
+    let control: ProjectDetailViewModel.Control
+    let onDismiss: () -> Void
+
+    private var shape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: Theme.Metrics.workspacePanelRadius,
+                         style: .continuous)
+    }
+
+    var body: some View {
+        ZStack {
+            Theme.Palette.canvas.opacity(0.8)
+                .ignoresSafeArea()
+                .onTapGesture(perform: onDismiss)
+                .accessibilityLabel("Dismiss \(control.title) information")
+                .accessibilityAddTraits(.isButton)
+
+            VStack(alignment: .leading, spacing: 18) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("About \(control.title)")
+                        .font(Theme.Typography.panelTitle)
+                        .foregroundStyle(Theme.Palette.textPrimary)
+                    Spacer()
+                    Button(action: onDismiss) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 14, weight: .semibold))
+                            .frame(width: 32, height: 32)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Theme.Palette.textSecondary)
+                    .background(Theme.Palette.workspaceControl, in: Circle())
+                    .accessibilityLabel("Close")
+                }
+
+                SliderInfoPlaceholder(title: control.title)
+
+                Text(control.infoDescription)
+                    .font(.system(size: 17))
+                    .foregroundStyle(Theme.Palette.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Label(control.infoTip, systemImage: "lightbulb")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Theme.Palette.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(24)
+            .frame(width: 420, alignment: .leading)
+            .background(Theme.Palette.workspacePanel.opacity(0.96), in: shape)
+            .overlay { shape.strokeBorder(Theme.Palette.workspaceStroke.opacity(0.16), lineWidth: 0.5) }
+            .accessibilityElement(children: .contain)
+        }
+    }
+}
+
+/// Explicitly a placeholder rather than a made-up visual explanation. It gives
+/// the eventual illustration a stable layout slot without suggesting imagery
+/// that has not been designed or validated yet.
+private struct SliderInfoPlaceholder: View {
+    let title: String
+
+    var body: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "photo")
+                .font(.system(size: 32, weight: .light))
+            Text("\(title) illustration placeholder")
+                .font(.system(size: 13))
+        }
+        .foregroundStyle(Theme.Palette.textTertiary)
+        .frame(maxWidth: .infinity)
+        .frame(height: 174)
+        .background(Theme.Palette.workspaceCanvas,
+                    in: RoundedRectangle(cornerRadius: Theme.Metrics.workspaceControlRadius,
+                                         style: .continuous))
+        .accessibilityLabel("Placeholder for a \(title) illustration")
+    }
+}
+
+private extension ProjectDetailViewModel.Control {
+    var infoDescription: String {
+        switch self {
+        case .depth:
+            "Sets the relief's physical height, from 4 mm to 40 mm. Increase it for stronger shadows and a more pronounced surface; reduce it for a shallower, subtler result."
+        case .smoothness:
+            "Balances the smooth roughness layer against the main depth layer. Move it right to soften small changes and suppress noise; move it left to retain crisper local variation."
+        case .texture:
+            "Controls how much fine detail is blended into the relief. Increase it to reveal more local texture; reduce it to favour the image's broader forms."
+        case .outline:
+            "Sets the depth-ordering strength that keeps nearer regions in front of farther ones. Higher values preserve cleaner foreground boundaries; lower values relax that separation."
+        }
+    }
+
+    var infoTip: String {
+        switch self {
+        case .depth:
+            "This is the only slider measured in millimetres."
+        case .smoothness:
+            "Use it when the surface looks noisy or overly soft."
+        case .texture:
+            "Fine texture is subtle by design; judge it at a grazing angle."
+        case .outline:
+            "At 0%, depth ordering is disabled."
+        }
     }
 }
 
